@@ -10,6 +10,7 @@
 
 import * as THREE from "three";
 import { createSuitedAstronaut } from "./astronaut.js";
+import { foil, panelBump, paintSpeckle, worldUV, bellGeometry, nozzleHeat, nozzleTubesBump, mergeStatic } from "./model-detail.js";
 
 export const UPRIGHT_MODELS = new Set([
   "lunar-module", "lm-ascent", "rover", "curiosity", "perseverance", "helicopter", "helicopter-flying",
@@ -82,6 +83,25 @@ export function strut(a, b, radius, material, segments) {
   mesh.position.copy(a).addScaledVector(direction, 0.5);
   mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
   return mesh;
+}
+
+// A rocket nozzle (chamber, throat and curved bell) hanging down from y = top
+function nozzleBell(exitR, length, material, segments) {
+  return new THREE.Mesh(bellGeometry(exitR, length, segments || 32), material);
+}
+
+// A cluster of four small thrusters (an RCS "quad") on a short boom, facing out along +X
+function rcsQuad(m, size) {
+  const q = new THREE.Group();
+  q.add(box(size, size * 1.15, size, m.panelSilver));
+  [[0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]].forEach(function (d) {
+    const n = nozzleBell(size * 0.22, size * 0.5, m.nozzle, 10);
+    // point the nozzle outward along d
+    n.quaternion.setFromUnitVectors(V(0, -1, 0), V(d[0], d[1], d[2]));
+    n.position.set(d[0] * size * 0.55, d[1] * size * 0.62, d[2] * size * 0.55);
+    q.add(n);
+  });
+  return q;
 }
 
 // Turns a model built along +Y into one whose front points to +Z
@@ -183,7 +203,24 @@ function getMaterials() {
     roughness: 0.9, metalness: 0.0
   });
 
+  // Rebuilt models (Phase 1, model-detail.js): insulation foils, anodized panels and heat-tinted nozzles
+  const goldFoil = foil("gold");
+  const blackFoil = foil("black");
+  const silverFoil = foil("silver");
+  const foilGold = new THREE.MeshStandardMaterial({ map: goldFoil.map, bumpMap: goldFoil.bump, bumpScale: 1.4, metalness: 0.75, roughness: 0.32 });
+  const foilBlack = new THREE.MeshStandardMaterial({ map: blackFoil.map, bumpMap: blackFoil.bump, bumpScale: 1.2, metalness: 0.4, roughness: 0.45 });
+  const foilSilver = new THREE.MeshStandardMaterial({ map: silverFoil.map, bumpMap: silverFoil.bump, bumpScale: 1.2, metalness: 0.85, roughness: 0.25 });
+  const panelSilver = new THREE.MeshStandardMaterial({ color: 0xb8bcc4, map: paintSpeckle(), bumpMap: panelBump(), bumpScale: 1.5, metalness: 0.7, roughness: 0.38 });
+  const panelGray = new THREE.MeshStandardMaterial({ color: 0x80858d, map: paintSpeckle(), bumpMap: panelBump(), bumpScale: 1.5, metalness: 0.55, roughness: 0.45 });
+  const panelWhite = new THREE.MeshStandardMaterial({ color: 0xe9ecf0, map: paintSpeckle(), bumpMap: panelBump(), bumpScale: 1.5, metalness: 0.1, roughness: 0.55 });
+  const nozzle = new THREE.MeshStandardMaterial({ map: nozzleHeat(), bumpMap: nozzleTubesBump(), bumpScale: 0.6, metalness: 0.7, roughness: 0.42, side: THREE.DoubleSide });
+
+  const airbagFabric = new THREE.MeshStandardMaterial({ color: 0xe6dfcb, bumpMap: goldFoil.bump, bumpScale: 2.2, roughness: 0.95 });
+
   cache = {
+    airbagFabric: airbagFabric,
+    foilGold: foilGold, foilBlack: foilBlack, foilSilver: foilSilver,
+    panelSilver: panelSilver, panelGray: panelGray, panelWhite: panelWhite, nozzle: nozzle,
     white: white,
     foam: foam,
     gold: gold,
@@ -291,24 +328,60 @@ export function createAstronaut(suit) {
 
 // ---------- Spacecraft ----------
 
-// Apollo-style command and service module stack (forward = +Z)
+// Apollo command and service module (forward = +Z). Built in meters from NASA's published sizes and scaled
+// to the scene: 3.9 m wide; service module about 7.5 m long with its engine bell; the command module a cone
+// 3.2 m tall. Shown: the service module's radiator panels, four RCS quads, the high-gain antenna on its
+// boom, the big SPS engine bell, the command module's windows, docking probe and brown heat shield.
 function createApolloStack() {
   const m = getMaterials();
   const inner = new THREE.Group();
+  const k = 1 / 3;                 // meters -> model units (keeps the size used by the scenes)
+  const body = new THREE.Group();
+  body.scale.setScalar(k);
+  inner.add(body);
 
-  inner.add(put(cyl(0.65, 0.65, 1.5, m.white, 40), 0, 0.75, 0));               // service module
-  [0.35, 1.15].forEach(function (y) {
-    inner.add(put(cyl(0.66, 0.66, 0.06, m.black, 40), 0, y, 0));
+  body.add(put(cyl(1.95, 1.95, 4.4, m.panelSilver, 48), 0, 2.2, 0));               // service module
+  [0.9, 3.6].forEach(function (y) { body.add(put(cyl(1.97, 1.97, 0.12, m.black, 48), 0, y, 0)); });
+  for (let i = 0; i < 6; i++) {                                                    // radiator panels
+    const a = (i / 6) * Math.PI * 2 + 0.3;
+    const panel = box(0.9, 2.2, 0.06, m.panelWhite);
+    panel.position.set(Math.cos(a) * 1.97, 2.3, Math.sin(a) * 1.97);
+    panel.rotation.y = -a + Math.PI / 2;
+    body.add(panel);
+  }
+  [0, 1, 2, 3].forEach(function (i) {                                             // four RCS quads near the front
+    const a = (i * Math.PI) / 2 + Math.PI / 4;
+    const quad = rcsQuad(m, 0.42);
+    quad.position.set(Math.cos(a) * 2.15, 3.7, Math.sin(a) * 2.15);
+    quad.rotation.y = -a;
+    body.add(quad);
   });
-  inner.add(put(cyl(0.12, 0.65, 1.1, m.silver, 40), 0, 2.05, 0));               // command module
-  inner.add(put(cyl(0.03, 0.03, 0.35, m.metal, 10), 0, 2.78, 0));               // docking probe
-  inner.add(put(cyl(0.2, 0.55, 0.8, m.bell, 32), 0, -0.4, 0));                  // engine bell
-
-  [0, 1, 2, 3].forEach(function (i) {                                           // thruster quads
-    const angle = (i * Math.PI) / 2;
-    inner.add(put(box(0.18, 0.3, 0.18, m.metal), Math.cos(angle) * 0.68, 1.2, Math.sin(angle) * 0.68));
+  const sps = nozzleBell(1.25, 2.9, m.nozzle, 40);                                 // SPS engine
+  body.add(sps);
+  body.add(put(cyl(0.7, 1.0, 0.4, m.panelGray, 32), 0, -0.05, 0));
+  // high-gain antenna: four small dishes on a boom at the back
+  const boom = strut(V(1.6, 0.4, 0), V(2.6, -0.8, 0), 0.06, m.metal);
+  body.add(boom);
+  [[0.25, 0.25], [-0.25, 0.25], [0.25, -0.25], [-0.25, -0.25]].forEach(function (d) {
+    const dish = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2.6), m.dish);
+    dish.position.set(2.75, -0.9 + d[0], d[1]);
+    dish.rotation.z = Math.PI / 2;
+    body.add(dish);
   });
-  inner.add(put(cyl(0.3, 0.05, 0.14, m.dish, 20), 0.4, -0.1, 0.55));
+  // command module: a cone with its heat shield at the back, windows and the docking probe
+  const cm = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 1.95, 3.2, 48), m.foilSilver);
+  cm.position.y = 4.4 + 1.6 + 0.12;
+  body.add(cm);
+  body.add(put(cyl(1.96, 1.96, 0.24, m.heat, 48), 0, 4.52, 0));
+  [-0.75, 0, 0.75].forEach(function (x, i) {
+    const pane = box(0.32, 0.26, 0.05, m.black);
+    pane.position.set(x, 5.5 + (i === 1 ? 0.25 : 0), 1.48 - Math.abs(x) * 0.1);
+    pane.rotation.x = -0.52;
+    body.add(pane);
+  });
+  body.add(put(cyl(0.05, 0.05, 1.0, m.metal, 10), 0, 8.1, 0));                       // docking probe
+  body.add(put(cyl(0.18, 0.25, 0.25, m.metal, 16), 0, 7.75, 0));
+  mergeStatic(body);
 
   const stack = forward(inner, 3.5);
   const flame = makeFlame(0.4, 1.2, -1.3, true);   // inside the rotated group, "down" = backward
@@ -317,82 +390,166 @@ function createApolloStack() {
   return stack;
 }
 
-// Apollo-style lunar module (upright)
+// The Lunar Module's ascent stage (crew cabin), in meters, standing on y = 0 (the top of the descent stage).
+// About 2.8 m tall and 4.0 x 4.3 m across (NSSDCA): the faceted cabin with its two triangular windows and
+// the hatch below them, the aft equipment bay, the two propellant tank bulges, the docking tunnel on top,
+// the rendezvous radar and steerable S-band dishes, two VHF antennas, and four RCS quads on the corners.
+function buildAscentStage(m) {
+  const a = new THREE.Group();
+  // front cabin: an extruded faceted outline (seen from the side), 2.3 m wide
+  const side = new THREE.Shape();
+  side.moveTo(-0.9, 0.2);
+  side.lineTo(0.75, 0.2);
+  side.lineTo(1.15, 0.75);
+  side.lineTo(1.15, 1.9);
+  side.lineTo(0.7, 2.45);
+  side.lineTo(-0.9, 2.45);
+  side.closePath();
+  const cabinGeometry = new THREE.ExtrudeGeometry(side, { depth: 2.3, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 1 });
+  cabinGeometry.translate(0, 0, -1.15);
+  cabinGeometry.rotateY(-Math.PI / 2);           // front (shape +x) now faces +Z
+  a.add(new THREE.Mesh(cabinGeometry, m.panelSilver));
+  // dark front panel around the windows and the hatch
+  const front = box(1.9, 1.15, 0.05, m.foilBlack);
+  front.position.set(0, 1.35, 1.17);
+  a.add(front);
+  [-1, 1].forEach(function (sideX) {
+    const pane = new THREE.Mesh(new THREE.CircleGeometry(0.34, 3), m.black);
+    pane.position.set(sideX * 0.45, 1.65, 1.2);
+    pane.rotation.z = sideX > 0 ? -Math.PI / 6 : Math.PI / 6 + Math.PI / 3;
+    a.add(pane);
+  });
+  a.add(put(box(0.82, 0.82, 0.06, m.panelGray), 0, 0.72, 1.17));          // forward hatch
+  // aft equipment bay, behind the cabin
+  a.add(put(box(2.2, 1.3, 1.1, m.foilBlack), 0, 1.0, -1.45));
+  // propellant tank bulges on the left and right
+  [-1, 1].forEach(function (sx) {
+    const tank = new THREE.Mesh(new THREE.SphereGeometry(0.62, 24, 16), m.panelGray);
+    tank.scale.set(0.75, 1, 1);
+    tank.position.set(sx * 1.35, 1.05, -0.3);
+    a.add(tank);
+  });
+  // docking tunnel and drogue on top
+  a.add(put(cyl(0.42, 0.48, 0.45, m.panelSilver, 24), 0, 2.65, 0));
+  // rendezvous radar (front, above the cabin) and the steerable S-band antenna (on a short boom)
+  const radar = new THREE.Mesh(new THREE.SphereGeometry(0.33, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2.5), m.dish);
+  radar.position.set(0, 2.55, 0.85);
+  radar.rotation.x = Math.PI / 2.4;
+  a.add(radar);
+  a.add(strut(V(0.7, 2.4, -0.4), V(1.25, 2.95, -0.6), 0.04, m.metal));
+  const sband = new THREE.Mesh(new THREE.SphereGeometry(0.34, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2.4), m.dish);
+  sband.position.set(1.3, 3.05, -0.62);
+  sband.rotation.z = -0.5;
+  a.add(sband);
+  [-0.6, 0.6].forEach(function (x) { a.add(strut(V(x, 2.45, -0.9), V(x * 1.4, 3.2, -1.2), 0.018, m.metal)); }); // VHF antennas
+  // four RCS quads on the corners
+  [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(function (c) {
+    const quad = rcsQuad(m, 0.3);
+    quad.position.set(c[0] * 1.75, 1.95, c[1] * 1.0);
+    quad.rotation.y = Math.atan2(-c[1], c[0]);
+    a.add(quad);
+    a.add(strut(V(c[0] * 1.1, 1.95, c[1] * 0.8), V(c[0] * 1.62, 1.95, c[1] * 0.98), 0.05, m.metal));
+  });
+  // ascent engine under the cabin
+  const engine = nozzleBell(0.42, 0.75, m.nozzle, 24);
+  engine.position.y = 0.2;
+  a.add(engine);
+  mergeStatic(a);
+  return a;
+}
+
+// Apollo Lunar Module (upright). Built in meters from NSSDCA's description and scaled 0.42 for the scenes:
+// the descent stage is an octagonal prism 4.2 m across and 1.7 m thick, its bottom 1.5 m above the
+// surface; footpads 9.4 m apart across opposite legs; the descent engine skirt sticks 1 m out below.
+// Gold and black insulation foil; the front leg carries the ladder and porch; the other three legs carry
+// the long surface contact probes.
+const LM_SCALE = 0.42;
 function createLunarModule() {
   const m = getMaterials();
   const lm = new THREE.Group();
+  const g = new THREE.Group();
+  g.scale.setScalar(LM_SCALE);
+  lm.add(g);
 
-  // Descent stage: an eight-sided box wrapped in gold foil, with a black band below
-  lm.add(put(cyl(0.85, 0.85, 0.7, m.gold, 8), 0, 1.0, 0));
-  lm.add(put(cyl(0.86, 0.8, 0.12, m.black, 8), 0, 0.62, 0));
-  lm.add(put(cyl(0.16, 0.34, 0.4, m.bell, 20), 0, 0.42, 0));      // descent engine bell
-  lm.add(put(cyl(0.64, 0.64, 0.08, m.gold, 8), 0, 1.4, 0));
+  // descent stage: octagon 4.2 m across the flats, from 1.5 m to 3.2 m above the ground
+  const flats = 4.2 / 2;
+  const radius = flats / Math.cos(Math.PI / 8);
+  const stageGeometry = new THREE.CylinderGeometry(radius, radius, 1.7, 8, 1);
+  worldUV(stageGeometry, 8 * 2 * radius * Math.sin(Math.PI / 8), 1.7, 1.1); // foil crinkles at their real size
+  const stage = new THREE.Mesh(stageGeometry, m.foilGold);
+  stage.rotation.y = Math.PI / 8;
+  stage.position.y = 2.35;
+  g.add(stage);
+  const under = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.98, radius * 0.92, 0.12, 8), m.foilBlack);
+  under.rotation.y = Math.PI / 8;
+  under.position.y = 1.47;
+  g.add(under);
+  // black panels on the four corner quadrants, gold on the faces (as in the Apollo photos)
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const panel = box(1.5, 1.5, 0.04, m.foilBlack);
+    panel.position.set(Math.cos(a) * flats * 1.005, 2.35, Math.sin(a) * flats * 1.005);
+    panel.rotation.y = -a + Math.PI / 2;
+    g.add(panel);
+  }
+  const descent = nozzleBell(0.75, 1.3, m.nozzle, 32);                            // descent engine skirt
+  descent.position.y = 1.8;
+  g.add(descent);
 
-  // Ascent stage (the crew cabin): faceted silver body with a black front and two triangular windows
-  lm.add(put(cyl(0.62, 0.62, 0.95, m.silver, 8), 0, 1.82, 0));
-  lm.add(put(box(0.75, 0.55, 0.12, m.black), 0, 1.92, 0.58));
-  [-1, 1].forEach(function (side) {
-    const pane = new THREE.Mesh(new THREE.CircleGeometry(0.14, 3), m.visor);
-    pane.position.set(side * 0.18, 2.0, 0.645);
-    pane.rotation.z = side > 0 ? Math.PI / 6 : -Math.PI / 6;
-    lm.add(pane);
-  });
-  lm.add(put(box(0.3, 0.32, 0.06, m.silver), 0, 1.55, 0.66));    // front hatch
-  lm.add(put(cyl(0.12, 0.12, 0.12, m.metal, 12), 0, 2.35, 0));    // docking hatch on top
-  lm.add(put(cyl(0.3, 0.05, 0.14, m.dish, 20), 0.5, 2.4, -0.2));  // S-band antenna
-  lm.add(put(cyl(0.18, 0.04, 0.1, m.dish, 16), -0.45, 2.38, 0.3)); // rendezvous radar dish
+  // ascent stage on top
+  const ascent = buildAscentStage(m);
+  ascent.position.y = 3.2;
+  g.add(ascent);
 
-  // Four groups of small steering thrusters (RCS quads) on the corners of the cabin
-  [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(function (c) {
-    const quad = new THREE.Group();
-    quad.add(box(0.14, 0.14, 0.14, m.silver));
-    [[0.1, 0, 0], [-0.1, 0, 0], [0, 0.1, 0], [0, -0.1, 0]].forEach(function (p) {
-      quad.add(put(cyl(0.025, 0.04, 0.08, m.bell, 8), p[0], p[1], p[2]));
+  // four legs (front, back, left, right): main strut, two side braces, footpad; contact probes on three
+  [0, 1, 2, 3].forEach(function (i) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 2;                                 // i = 0 is the front leg (+Z)
+    const dir = V(Math.cos(a), 0, Math.sin(a));
+    const sideDir = V(-dir.z, 0, dir.x);
+    const top = dir.clone().multiplyScalar(flats + 0.05).setY(2.9);
+    const foot = dir.clone().multiplyScalar(4.7).setY(0.25);
+    g.add(strut(top, foot, 0.11, m.foilGold, 10));
+    const mid = foot.clone().lerp(top, 0.38);
+    [-1, 1].forEach(function (s2) {
+      g.add(strut(dir.clone().multiplyScalar(flats * 0.9).add(sideDir.clone().multiplyScalar(s2 * 1.3)).setY(1.55), mid, 0.05, m.metal, 8));
     });
-    quad.position.set(c[0] * 0.52, 2.15, c[1] * 0.52);
-    lm.add(quad);
+    g.add(strut(dir.clone().multiplyScalar(flats).setY(1.6), mid, 0.05, m.metal, 8));
+    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.47, 20, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), m.foilGold);
+    pad.scale.set(1, 0.45, 1);
+    pad.position.copy(foot).setY(0.22);
+    g.add(pad);
+    if (i !== 0) g.add(strut(foot.clone().setY(0.15), foot.clone().add(dir.clone().multiplyScalar(0.25)).setY(-1.5), 0.025, m.metal, 6));
   });
-
-  // Four legs: main strut, two braces, a footpad, and a long contact probe (not on the front leg)
-  [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(function (c, index) {
-    const top = V(c[0] * 0.55, 0.95, c[1] * 0.55);
-    const foot = V(c[0] * 1.4, 0.06, c[1] * 1.4);
-    lm.add(strut(top, foot, 0.05, m.gold));
-    lm.add(strut(V(c[0] * 0.75, 0.7, c[1] * 0.2), foot.clone().lerp(top, 0.35), 0.025, m.metal));
-    lm.add(strut(V(c[0] * 0.2, 0.7, c[1] * 0.75), foot.clone().lerp(top, 0.35), 0.025, m.metal));
-    lm.add(put(cyl(0.22, 0.24, 0.07, m.gold, 16), foot.x, 0.035, foot.z));
-    if (index !== 0) lm.add(strut(V(foot.x, 0.05, foot.z), V(foot.x * 1.05, -0.55, foot.z * 1.05), 0.012, m.metal));
-  });
-
-  // Ladder on the front leg
-  const ladderTop = V(0.5, 0.9, 0.62);
-  const ladderBottom = V(1.25, 0.15, 1.3);
-  lm.add(strut(ladderTop.clone().add(V(-0.12, 0, 0.1)), ladderBottom.clone().add(V(-0.12, 0, 0.1)), 0.012, m.metal));
-  lm.add(strut(ladderTop.clone().add(V(0.12, 0, -0.1)), ladderBottom.clone().add(V(0.12, 0, -0.1)), 0.012, m.metal));
-  for (let i = 1; i < 8; i++) {
-    const p = ladderTop.clone().lerp(ladderBottom, i / 8);
-    lm.add(strut(p.clone().add(V(-0.12, 0, 0.1)), p.clone().add(V(0.12, 0, -0.1)), 0.01, m.metal));
+  // porch and ladder on the front leg
+  const porch = box(1.0, 0.06, 0.7, m.panelSilver);
+  porch.position.set(0, 3.15, flats + 0.4);
+  g.add(porch);
+  const ladderTop = V(0, 3.1, flats + 0.75);
+  const ladderBottom = V(0, 0.8, 4.3);
+  [-0.35, 0.35].forEach(function (x) { g.add(strut(ladderTop.clone().setX(x), ladderBottom.clone().setX(x), 0.03, m.metal, 6)); });
+  for (let i = 1; i < 9; i++) {
+    const p = ladderTop.clone().lerp(ladderBottom, i / 9);
+    g.add(strut(p.clone().setX(-0.35), p.clone().setX(0.35), 0.025, m.metal, 6));
   }
 
+  mergeStatic(g);
   lm.userData.size = 3;
-  lm.userData.engines = [V(0, 0.2, 0)]; // where the descent engine flame comes out
+  lm.userData.ascent = ascent;                 // the liftoff scene hides it and flies createLmAscent instead
+  lm.userData.ascentBase = 3.2 * LM_SCALE;     // the top of the descent stage, where the ascent stage sits
+  lm.userData.engines = [V(0, 0.5 * LM_SCALE, 0)]; // the descent engine's exit (flame comes out here)
   return lm;
 }
 
-// Only the top half of the lunar module, lifting off (upright, flame points down)
+// Only the top half of the lunar module, lifting off (upright, flame points down). Same ascent stage as
+// on the full Lunar Module.
 function createLmAscent() {
   const m = getMaterials();
   const stage = new THREE.Group();
+  const a = buildAscentStage(m);
+  a.scale.setScalar(LM_SCALE);
+  stage.add(a);
 
-  stage.add(put(cyl(0.62, 0.62, 0.95, m.silver, 8), 0, 0.5, 0));
-  stage.add(put(cyl(0.64, 0.64, 0.08, m.gold, 8), 0, 0.05, 0));
-  stage.add(put(box(0.3, 0.2, 0.06, m.black), -0.2, 0.65, 0.6));
-  stage.add(put(box(0.3, 0.2, 0.06, m.black), 0.2, 0.65, 0.6));
-  stage.add(put(cyl(0.12, 0.12, 0.12, m.metal, 12), 0, 1.03, 0));
-  stage.add(put(cyl(0.3, 0.05, 0.14, m.dish, 20), 0.5, 1.1, -0.2));
-  stage.add(put(cyl(0.12, 0.28, 0.4, m.bell, 20), 0, -0.2, 0));
-
-  const flame = makeFlame(0.28, 0.9, -0.75, true);
+  const flame = makeFlame(0.28, 0.9, -0.55, true);
   stage.add(flame);
   stage.userData.flame = flame;
   stage.userData.size = 1.6;
@@ -557,6 +714,14 @@ function triangle(a, b, c, material) {
   return new THREE.Mesh(geometry, material);
 }
 
+// A lander footpad: a shallow round dish (crushable honeycomb), round side down; its bottom is 0.4 x radius
+// below its position
+function footpad(radius, material) {
+  const pad = new THREE.Mesh(new THREE.SphereGeometry(radius, 20, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), material);
+  pad.scale.set(1, 0.4, 1);
+  return pad;
+}
+
 // Three or four legs with footpads, from a ring under the body down to the ground
 function landingLegs(group, count, topRadius, topY, footRadius, padRadius, legMaterial, padMaterial, startAngle) {
   for (let i = 0; i < count; i++) {
@@ -574,177 +739,353 @@ function landingLegs(group, count, topRadius, topY, footRadius, padRadius, legMa
 
 // ---------- Mars rovers ----------
 
+// A rover wheel (a group that spins around its X axis, like treadWheel). side = +1 or -1 (which side of
+// the rover it is on: the spokes go on the outside face). style:
+//   "curiosity"    24 chevron-shaped grousers, curved titanium spokes (50 cm wheels)
+//   "perseverance" 48 gently curved grousers, a thicker skin, curved spokes (52.5 cm wheels)
+//   "mer"          cleats and spiral flexure spokes (Spirit and Opportunity, 26 cm wheels)
+//   "sojourner"    stainless-steel cleats and a flat hub (13 cm wheels)
+//   "lrv"          the Lunar Roving Vehicle's woven wire-mesh tire with titanium chevron treads (82 cm)
+function roverWheel(radius, width, side, style, m) {
+  const wheel = new THREE.Group();
+  const skin = style === "lrv" ? m.mesh : m.wheel;
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, width, 40, 1, true), skin);
+  rim.rotation.z = Math.PI / 2;
+  wheel.add(rim);
+  // dark inside of the wheel, seen through the spokes
+  const inside = new THREE.Mesh(new THREE.CircleGeometry(radius * 0.97, 28), m.black);
+  inside.rotation.y = side * Math.PI / 2;
+  inside.position.x = -side * width * 0.3;
+  wheel.add(inside);
+
+  const counts = { curiosity: 24, perseverance: 48, mer: 20, sojourner: 14, lrv: 22 };
+  const n = counts[style] || 18;
+  const h = radius * (style === "lrv" ? 0.03 : 0.06);
+  const t = radius * (style === "perseverance" ? 0.025 : 0.04);
+  const treadMaterial = style === "lrv" ? m.silver : m.wheel;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const r = radius + h / 2;
+    if (style === "curiosity" || style === "lrv") {
+      // a V-shaped (chevron) grouser: two halves angled toward each other
+      [-1, 1].forEach(function (half) {
+        const g = box(width * 0.52, h, t, treadMaterial);
+        g.rotation.order = "XYZ";
+        g.rotation.set(a, half * 0.32, 0);
+        g.position.set(half * width * 0.25, Math.cos(a) * r, Math.sin(a) * r);
+        g.position.add(V(0, -Math.sin(a), Math.cos(a)).multiplyScalar(width * 0.04));
+        wheel.add(g);
+      });
+    } else {
+      const g = box(width * (style === "perseverance" ? 0.98 : 0.9), h, t, treadMaterial);
+      g.rotation.order = "XYZ";
+      g.rotation.set(a, style === "perseverance" ? 0.12 : 0, 0);
+      g.position.set(0, Math.cos(a) * r, Math.sin(a) * r);
+      wheel.add(g);
+    }
+  }
+
+  // outer face: curved spokes from the hub to the rim, or a hub cover
+  const face = side * width * 0.46;
+  if (style === "curiosity" || style === "perseverance" || style === "mer") {
+    const spokes = 6;
+    for (let i = 0; i < spokes; i++) {
+      const a = (i / spokes) * Math.PI * 2;
+      const at = function (rr, aa) { return V(face, Math.cos(aa) * rr, Math.sin(aa) * rr); };
+      const curve = new THREE.QuadraticBezierCurve3(at(radius * 0.22, a), at(radius * 0.62, a + 0.12), at(radius * 0.96, a + 0.75));
+      wheel.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 8, radius * 0.035, 5), m.metal));
+    }
+  } else {
+    const cover = new THREE.Mesh(new THREE.CircleGeometry(radius * (style === "lrv" ? 0.62 : 0.85), 24), style === "lrv" ? m.silver : m.wheel);
+    cover.rotation.y = side * Math.PI / 2;
+    cover.position.x = face;
+    wheel.add(cover);
+  }
+  const hub = cyl(radius * 0.22, radius * 0.22, width * 1.02, m.metal, 16);
+  hub.rotation.z = Math.PI / 2;
+  hub.position.x = side * width * 0.05;
+  wheel.add(hub);
+  mergeStatic(wheel);
+  return wheel;
+}
+
+// A box beam between two points (rover suspension arms are rectangular tubes)
+function beam(a, b, w, h, material) {
+  const d = new THREE.Vector3().subVectors(b, a);
+  const mesh = box(w, h, d.length(), material);
+  mesh.position.copy(a).addScaledVector(d, 0.5);
+  mesh.lookAt(b); // (not yet in a group, so this aims the beam's length, +Z, at b)
+  return mesh;
+}
+
 // Curiosity and Perseverance (upright, about 3 m long). variant = "curiosity" or "perseverance".
-// They share one design; Perseverance has a bigger arm turret (with a coring drill) and a sample caching box.
+// Built in meters from NASA's published sizes: 3 m long, 2.7 m wide, 2.2 m tall; 60 cm ground clearance;
+// six wheels 50 cm (Curiosity) or 52.5 cm (Perseverance) across on a rocker-bogie suspension; the mast
+// cameras about 2 m above the ground; a 2.1 m robotic arm with a tool turret; the nuclear power source
+// (MMRTG) at the back between two heat-exchanger panels. They share one design (Perseverance was built
+// from Curiosity's); Perseverance has a bigger turret with a coring drill and the sample-caching system.
 function createMarsRover(variant) {
   const m = getMaterials();
   const rover = new THREE.Group();
   const isPerseverance = variant === "perseverance";
+  const wheelR = isPerseverance ? 0.2625 : 0.25;
 
-  // Body ("warm electronics box") and top deck
-  rover.add(put(box(1.4, 0.55, 2.0, m.white), 0, 1.05, 0));
-  rover.add(put(box(1.5, 0.06, 2.1, m.metal), 0, 1.36, 0));
-  rover.add(put(box(0.5, 0.25, 0.35, m.gold), -0.35, 1.52, 0.35));
-  if (isPerseverance) rover.add(put(box(0.6, 0.3, 0.5, m.white), 0.1, 0.9, 0.95)); // sample caching system
+  // Body ("warm electronics box"), 60 cm above the ground, and its top deck
+  const body = new THREE.Group();
+  body.add(put(box(1.45, 0.55, 1.9, m.panelWhite), 0, 0.88, 0));
+  body.add(put(box(1.5, 0.05, 2.0, m.panelGray), 0, 1.18, 0));
+  body.add(put(box(1.46, 0.05, 1.91, m.foilBlack), 0, 0.62, 0));              // belly
+  body.add(put(box(0.5, 0.22, 0.4, m.foilGold), -0.35, 1.32, 0.3));          // instruments under the deck lids
+  body.add(put(box(0.38, 0.16, 0.32, m.panelSilver), 0.25, 1.29, -0.2));
+  body.add(put(box(0.3, 0.12, 0.42, m.foilGold), -0.3, 1.27, -0.45));
+  if (isPerseverance) body.add(put(box(0.7, 0.32, 0.4, m.panelWhite), 0.1, 0.68, 0.98)); // sample caching
 
-  // Power source at the back (radioisotope generator) with cooling fins
+  // front and rear hazard cameras (pairs)
+  [[0.95, 1], [-0.95, -1]].forEach(function (c) {
+    [-0.32, -0.12, 0.12, 0.32].forEach(function (x) {
+      const lens = cyl(0.025, 0.025, 0.04, m.black, 10);
+      lens.rotation.x = Math.PI / 2;
+      body.add(put(lens, x, 0.7, c[0] + c[1] * 0.02));
+    });
+    body.add(put(box(0.8, 0.07, 0.06, m.panelGray), 0, 0.7, c[0]));
+  });
+
+  // Power source at the back: MMRTG with eight cooling fins, between two heat-exchanger panels
   const rtg = new THREE.Group();
-  rtg.add(cyl(0.2, 0.2, 0.7, m.black, 16));
+  rtg.add(cyl(0.14, 0.14, 0.68, m.black, 20));
   for (let i = 0; i < 8; i++) {
-    const fin = box(0.03, 0.66, 0.52, m.black);
+    const fin = box(0.02, 0.64, 0.6, m.black);
     fin.rotation.y = (i * Math.PI) / 8;
     rtg.add(fin);
   }
-  rtg.rotation.x = Math.PI / 2 - 0.45;
-  rtg.position.set(0, 1.25, -1.2);
+  rtg.rotation.x = Math.PI / 2 - 0.5;
+  rtg.position.set(0, 1.08, -1.25);
   rover.add(rtg);
-
-  // Mast with the camera head
-  rover.add(strut(V(0.45, 1.38, 0.75), V(0.45, 2.1, 0.75), 0.05, m.white));
-  const head = new THREE.Group();
-  head.position.set(0.45, 2.2, 0.75);
-  head.add(box(0.46, 0.2, 0.26, m.white));
-  [-0.15, 0.15].forEach(function (x) {
-    const lens = cyl(0.045, 0.045, 0.06, m.black, 12);
-    lens.rotation.x = Math.PI / 2;
-    head.add(put(lens, x, -0.02, 0.15));
+  [-1, 1].forEach(function (sx) {
+    const hx = box(0.04, 0.55, 0.6, m.panelSilver);
+    hx.position.set(sx * 0.45, 1.05, -1.18);
+    hx.rotation.set(-0.5, sx * 0.35, 0);
+    body.add(hx);
   });
-  const laserEye = cyl(isPerseverance ? 0.07 : 0.09, isPerseverance ? 0.07 : 0.09, 0.08, m.visor, 16);
+
+  // Remote sensing mast: Mastcam about 2 m up, Navcam pairs, and the laser "eye" (ChemCam/SuperCam)
+  body.add(put(cyl(0.055, 0.07, 0.8, m.panelWhite, 16), 0.5, 1.6, 0.72));
+  body.add(put(box(0.16, 0.12, 0.16, m.panelGray), 0.5, 1.22, 0.72));
+  const head = new THREE.Group();
+  head.position.set(0.5, 2.05, 0.72);
+  head.add(box(0.5, 0.18, 0.24, m.panelWhite));
+  head.add(put(box(0.32, 0.14, 0.12, m.panelGray), 0, -0.04, 0.17));
+  [-0.18, -0.11, 0.11, 0.18].forEach(function (x) {
+    const lens = cyl(0.03, 0.03, 0.05, m.black, 12);
+    lens.rotation.x = Math.PI / 2;
+    head.add(put(lens, x, -0.04, 0.23));
+  });
+  const eyeBox = isPerseverance ? box(0.24, 0.17, 0.26, m.panelWhite) : box(0.22, 0.16, 0.24, m.panelWhite);
+  head.add(put(eyeBox, 0, 0.17, 0));
+  const laserEye = cyl(isPerseverance ? 0.075 : 0.07, isPerseverance ? 0.075 : 0.07, 0.05, m.black, 20);
   laserEye.rotation.x = Math.PI / 2;
-  head.add(put(laserEye, 0, 0.17, 0.08));
-  head.add(put(box(0.2, 0.12, 0.18, m.white), 0, 0.17, 0));
+  head.add(put(laserEye, 0, 0.17, 0.14));
+  const glint = new THREE.Mesh(new THREE.CircleGeometry(0.05, 20), m.visor);
+  head.add(put(glint, 0, 0.17, 0.166));
   rover.add(head);
+  // weather-station booms on the mast
+  [-1, 1].forEach(function (sx) { body.add(strut(V(0.5, 1.55, 0.72), V(0.5 + sx * 0.22, 1.55, 0.72 + 0.1), 0.012, m.metal, 6)); });
 
-  // High-gain antenna (six-sided plate) and a small UHF antenna
-  const hga = cyl(0.22, 0.22, 0.05, m.silver, 6);
-  hga.rotation.x = -0.5;
-  rover.add(put(hga, -0.5, 1.62, -0.45));
-  rover.add(strut(V(-0.5, 1.39, -0.45), V(-0.5, 1.58, -0.45), 0.03, m.metal));
-  rover.add(put(cyl(0.06, 0.06, 0.25, m.white, 10), 0.55, 1.5, -0.8));
+  // High-gain antenna (six-sided plate on a gimbal), UHF and low-gain antennas
+  const hga = cyl(0.2, 0.2, 0.04, m.panelSilver, 6);
+  hga.rotation.set(-0.6, 0, 0.25);
+  rover.add(put(hga, -0.5, 1.45, -0.42));
+  body.add(put(cyl(0.05, 0.07, 0.22, m.metal, 12), -0.5, 1.3, -0.42));
+  body.add(put(cyl(0.06, 0.06, 0.28, m.panelWhite, 12), 0.55, 1.35, -0.75));
+  body.add(put(cyl(0.025, 0.03, 0.32, m.panelWhite, 10), 0.3, 1.37, -0.85));
 
-  // Robotic arm folded in front, with its tool turret
-  rover.add(strut(V(0.55, 0.95, 1.0), V(0.6, 1.0, 1.6), 0.05, m.metal));
-  rover.add(strut(V(0.6, 1.0, 1.6), V(0.15, 0.8, 1.75), 0.045, m.metal));
+  // Robotic arm stowed across the front, with its tool turret
+  const shoulder = V(0.55, 0.85, 1.02);
+  const elbow = V(0.62, 1.0, 1.55);
+  const wrist = V(-0.05, 0.85, 1.68);
+  body.add(put(box(0.18, 0.2, 0.16, m.panelWhite), shoulder.x, shoulder.y, shoulder.z - 0.05));
+  body.add(strut(shoulder, elbow, 0.055, m.panelWhite, 12));
+  body.add(put(new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8), m.metal), elbow.x, elbow.y, elbow.z));
+  body.add(strut(elbow, wrist, 0.05, m.panelWhite, 12));
   const turret = new THREE.Group();
-  turret.position.set(0.15, 0.68, 1.8);
-  turret.add(box(isPerseverance ? 0.34 : 0.26, 0.22, 0.26, m.metal));
-  turret.add(put(cyl(0.035, 0.02, isPerseverance ? 0.3 : 0.2, m.silver, 10), 0, -0.22, 0));
+  turret.position.set(wrist.x - 0.05, wrist.y - 0.12, wrist.z + 0.05);
+  turret.add(cyl(0.11, 0.11, 0.16, m.panelGray, 12));
+  const tools = isPerseverance ? 5 : 5;
+  for (let i = 0; i < tools; i++) {
+    const a = (i / tools) * Math.PI * 2;
+    const big = i === 0;
+    const tool = big
+      ? cyl(0.06, 0.04, isPerseverance ? 0.38 : 0.3, m.panelSilver, 12)      // the drill
+      : box(0.1, 0.14, 0.1, i % 2 ? m.panelWhite : m.foilGold);
+    tool.position.set(Math.cos(a) * 0.14, -0.08, Math.sin(a) * 0.14);
+    turret.add(tool);
+  }
+  if (isPerseverance) turret.scale.setScalar(1.2);
   rover.add(turret);
 
-  // Hazard-avoidance cameras on the front
-  [-0.25, 0.25].forEach(function (x) {
-    const cam = cyl(0.04, 0.04, 0.06, m.black, 10);
-    cam.rotation.x = Math.PI / 2;
-    rover.add(put(cam, x, 0.9, 1.02));
-  });
-
-  // Rocker-bogie suspension and six wheels with treads
+  // Rocker-bogie suspension: a differential bar on the deck links the two rockers; each rocker carries
+  // the front wheel and a bogie that carries the middle and rear wheels. Front and rear wheels steer.
   const wheels = [];
+  body.add(put(box(1.7, 0.06, 0.08, m.metal), 0, 1.25, -0.1));
   [-1, 1].forEach(function (side) {
-    const x = side * 0.97;
-    const pivot = V(side * 0.78, 0.95, 0.15);
-    const bogie = V(side * 0.92, 0.62, -0.42);
-    const front = V(x, 0.3, 1.0);
-    const middle = V(x, 0.3, 0.05);
-    const rear = V(x, 0.3, -0.95);
-
-    rover.add(strut(pivot, front.clone().add(V(0, 0.2, 0)), 0.045, m.metal));
-    rover.add(strut(pivot, bogie, 0.045, m.metal));
-    rover.add(strut(bogie, middle.clone().add(V(0, 0.2, 0)), 0.04, m.metal));
-    rover.add(strut(bogie, rear.clone().add(V(0, 0.2, 0)), 0.04, m.metal));
+    const x = side * 1.12;
+    const pivot = V(side * 0.8, 0.95, 0.1);
+    const front = V(x, wheelR, 1.0);
+    const middle = V(x, wheelR, 0.05);
+    const rear = V(x, wheelR, -0.95);
+    const bogie = V(side * 1.0, 0.68, -0.42);
+    body.add(strut(V(side * 0.85, 1.25, -0.1), pivot.clone().setY(1.0), 0.02, m.metal, 6));
+    body.add(put(cyl(0.09, 0.09, 0.12, m.metal, 14), pivot.x + side * 0.04, pivot.y, pivot.z).rotateZ(Math.PI / 2));
+    // rocker: from the pivot forward to the front wheel's steering actuator, back to the bogie pivot
+    const frontTop = V(x - side * 0.1, 0.86, 1.0);
+    body.add(beam(pivot, V(x - side * 0.1, 0.95, 0.72), 0.07, 0.1, m.panelSilver));
+    body.add(beam(V(x - side * 0.1, 0.95, 0.72), frontTop, 0.07, 0.1, m.panelSilver));
+    body.add(beam(pivot, bogie, 0.07, 0.1, m.panelSilver));
+    // bogie: to the middle wheel's hub and the rear wheel's steering actuator
+    body.add(beam(bogie, V(x - side * 0.12, 0.55, 0.05), 0.06, 0.08, m.panelSilver));
+    body.add(beam(bogie, V(x - side * 0.1, 0.86, -0.95), 0.06, 0.08, m.panelSilver));
+    body.add(put(cyl(0.07, 0.07, 0.1, m.metal, 14), bogie.x + side * 0.03, bogie.y, bogie.z).rotateZ(Math.PI / 2));
+    // steering actuators above the front and rear wheels, and the brackets down to the hubs
+    // (the brackets come down the inner side of each wheel to its hub)
+    [front, rear].forEach(function (p) {
+      body.add(put(cyl(0.07, 0.07, 0.16, m.panelGray, 14), x - side * 0.1, 0.8, p.z));
+      body.add(beam(V(x - side * 0.1, 0.72, p.z), V(x - side * 0.24, p.y, p.z), 0.05, 0.06, m.panelSilver));
+    });
+    body.add(beam(V(x - side * 0.12, 0.55, 0.05), V(x - side * 0.24, middle.y, 0.05), 0.05, 0.06, m.panelSilver));
 
     [front, middle, rear].forEach(function (p) {
-      const wheel = treadWheel(0.26, 0.4, m.wheel, m.metal);
+      const wheel = roverWheel(wheelR, 0.4, side, isPerseverance ? "perseverance" : "curiosity", m);
       wheel.position.copy(p);
       rover.add(wheel);
       wheels.push(wheel);
     });
   });
+  mergeStatic(body);
+  rover.add(body);
 
   rover.userData.size = 3;
   rover.userData.wheels = wheels;
   return rover;
 }
 
-// Spirit and Opportunity (Mars Exploration Rovers): solar-powered, about 1.6 m long
+// Spirit and Opportunity (Mars Exploration Rovers): solar-powered, 1.6 m long, 2.3 m wide with the solar
+// wings, 1.5 m tall at the camera mast; six 26 cm wheels on a rocker-bogie. Shown: the solar deck and its
+// side and rear wings, the Pancam mast with its camera bar, the round high-gain dish, the low-gain and UHF
+// rods, and the instrument arm stowed under the front.
 function createMerRover() {
   const m = getMaterials();
   const rover = new THREE.Group();
+  const body = new THREE.Group();
 
-  rover.add(put(box(0.85, 0.32, 1.05, m.white), 0, 0.5, 0));
-  rover.add(put(box(1.35, 0.03, 1.35, m.solar), 0, 0.7, 0));          // main solar deck
-  rover.add(put(box(1.1, 0.03, 0.45, m.solar), 0, 0.7, -0.88));       // rear solar wing
-  [-1, 1].forEach(function (side) {
-    rover.add(put(box(0.38, 0.03, 0.9, m.solar), side * 0.85, 0.7, 0.05)); // side solar wings
-  });
+  body.add(put(box(0.85, 0.3, 1.05, m.panelWhite), 0, 0.5, 0));
+  body.add(put(box(0.86, 0.03, 1.06, m.foilBlack), 0, 0.34, 0));
+  // solar arrays: a main deck, a rear wing and two side wings (with a frame around each)
+  const deck = function (w, d, x, z, tilt) {
+    const panel = box(w, 0.025, d, m.solar);
+    panel.position.set(x, 0.69, z);
+    panel.rotation.z = tilt || 0;
+    body.add(panel);
+    const frame = box(w + 0.03, 0.02, d + 0.03, m.panelSilver);
+    frame.position.set(x, 0.675, z);
+    frame.rotation.z = tilt || 0;
+    body.add(frame);
+  };
+  deck(1.1, 1.15, 0, 0.02);
+  deck(1.25, 0.42, 0, -0.78);
+  [-1, 1].forEach(function (side) { deck(0.5, 0.95, side * 0.82, 0.05, side * -0.04); });
 
-  // Pancam mast at the front
-  rover.add(strut(V(0, 0.72, 0.5), V(0, 1.45, 0.5), 0.03, m.white));
+  // Pancam mast at the front with its camera bar (Pancam and Navcam pairs)
+  body.add(put(cyl(0.03, 0.04, 0.72, m.panelWhite, 12), 0, 1.07, 0.48));
   const head = new THREE.Group();
-  head.position.set(0, 1.5, 0.5);
-  head.add(box(0.36, 0.1, 0.12, m.white));
-  [-0.13, 0.13].forEach(function (x) {
-    const lens = cyl(0.025, 0.025, 0.05, m.black, 10);
+  head.position.set(0, 1.47, 0.48);
+  head.add(box(0.4, 0.09, 0.11, m.panelWhite));
+  [-0.15, -0.06, 0.06, 0.15].forEach(function (x) {
+    const lens = cyl(0.02, 0.02, 0.04, m.black, 10);
     lens.rotation.x = Math.PI / 2;
     head.add(put(lens, x, 0, 0.07));
   });
+  head.add(put(box(0.12, 0.05, 0.06, m.panelGray), 0, 0.07, 0));
   rover.add(head);
 
-  // Antennas
-  const hga = cyl(0.14, 0.14, 0.03, m.silver, 16);
-  rover.add(put(hga, -0.35, 0.82, -0.3));
-  rover.add(strut(V(0.4, 0.72, -0.45), V(0.4, 1.15, -0.45), 0.01, m.metal));
+  // Antennas: high-gain dish on a gimbal, low-gain and UHF rods
+  const hga = cyl(0.14, 0.14, 0.03, m.panelSilver, 24);
+  hga.rotation.x = -0.4;
+  rover.add(put(hga, -0.33, 0.86, -0.25));
+  body.add(put(cyl(0.03, 0.04, 0.14, m.metal, 10), -0.33, 0.76, -0.25));
+  body.add(strut(V(0.38, 0.7, -0.42), V(0.38, 1.2, -0.42), 0.012, m.metal, 6));
+  body.add(strut(V(0.28, 0.7, -0.5), V(0.28, 1.0, -0.5), 0.01, m.metal, 6));
 
-  // Arm (instrument deployment device) folded under the front
-  rover.add(strut(V(0.25, 0.42, 0.55), V(-0.2, 0.36, 0.62), 0.03, m.metal));
-  rover.add(put(box(0.12, 0.12, 0.12, m.metal), -0.25, 0.33, 0.62));
+  // Instrument arm folded under the front, with its four-tool turret
+  body.add(strut(V(0.3, 0.42, 0.53), V(0.15, 0.33, 0.62), 0.025, m.panelWhite, 8));
+  body.add(strut(V(0.15, 0.33, 0.62), V(-0.18, 0.36, 0.64), 0.022, m.panelWhite, 8));
+  body.add(put(cyl(0.07, 0.07, 0.07, m.panelGray, 10), -0.24, 0.33, 0.64));
+  [0, 1, 2, 3].forEach(function (i) {
+    const a = (i / 4) * Math.PI * 2;
+    body.add(put(cyl(0.025, 0.025, 0.08, i ? m.metal : m.foilGold, 8), -0.24 + Math.cos(a) * 0.06, 0.27, 0.64 + Math.sin(a) * 0.06));
+  });
 
   // Rocker-bogie and six wheels
   const wheels = [];
   [-1, 1].forEach(function (side) {
     const x = side * 0.62;
-    const pivot = V(side * 0.48, 0.5, 0.05);
-    const bogie = V(side * 0.56, 0.35, -0.28);
-    rover.add(strut(pivot, V(x, 0.22, 0.55), 0.025, m.metal));
-    rover.add(strut(pivot, bogie, 0.025, m.metal));
-    rover.add(strut(bogie, V(x, 0.22, -0.02), 0.022, m.metal));
-    rover.add(strut(bogie, V(x, 0.22, -0.55), 0.022, m.metal));
+    const pivot = V(side * 0.46, 0.48, 0.05);
+    const bogie = V(side * 0.58, 0.32, -0.28);
+    body.add(beam(pivot, V(x, 0.3, 0.55), 0.035, 0.045, m.panelSilver));
+    body.add(beam(pivot, bogie, 0.035, 0.045, m.panelSilver));
+    body.add(beam(bogie, V(x, 0.26, -0.02), 0.03, 0.04, m.panelSilver));
+    body.add(beam(bogie, V(x, 0.26, -0.55), 0.03, 0.04, m.panelSilver));
+    [0.55, -0.55].forEach(function (z) { body.add(put(cyl(0.035, 0.035, 0.08, m.panelGray, 10), x, 0.31, z)); });
 
     [0.55, -0.02, -0.55].forEach(function (z) {
-      const wheel = treadWheel(0.13, 0.16, m.wheel, m.metal);
+      const wheel = roverWheel(0.13, 0.16, side, "mer", m);
       wheel.position.set(x, 0.13, z);
       rover.add(wheel);
       wheels.push(wheel);
     });
   });
+  mergeStatic(body);
+  rover.add(body);
 
   rover.userData.size = 1.6;
   rover.userData.wheels = wheels;
   return rover;
 }
 
-// Sojourner: the small Mars Pathfinder rover, about 65 cm long
+// Sojourner: the small Mars Pathfinder rover, 65 cm long, 48 cm wide, 30 cm tall; six 13 cm wheels on a
+// rocker-bogie. Shown: the solar panel on top, the whip antenna, the front camera pair and laser
+// hazard-detection stripes, and the alpha proton X-ray spectrometer (APXS) at the back.
 function createSojourner() {
   const m = getMaterials();
   const rover = new THREE.Group();
+  const body = new THREE.Group();
 
-  rover.add(put(box(0.36, 0.12, 0.42, m.white), 0, 0.19, 0));
-  rover.add(put(box(0.44, 0.015, 0.52, m.solar), 0, 0.27, -0.02));
-  rover.add(strut(V(0.12, 0.27, -0.2), V(0.12, 0.55, -0.2), 0.005, m.metal)); // antenna
+  body.add(put(box(0.34, 0.12, 0.42, m.foilGold), 0, 0.19, 0));
+  body.add(put(box(0.44, 0.012, 0.52, m.solar), 0, 0.272, -0.02));
+  body.add(put(box(0.45, 0.01, 0.53, m.panelSilver), 0, 0.264, -0.02));
+  body.add(strut(V(0.12, 0.27, -0.2), V(0.12, 0.55, -0.2), 0.004, m.metal, 6));    // antenna
+  body.add(put(cyl(0.008, 0.008, 0.02, m.black, 6), 0.12, 0.56, -0.2));
   [-0.06, 0.06].forEach(function (x) {
-    rover.add(put(box(0.03, 0.03, 0.02, m.black), x, 0.19, 0.22));             // front cameras
+    body.add(put(box(0.03, 0.03, 0.02, m.black), x, 0.2, 0.215));                  // front cameras
   });
+  body.add(put(box(0.18, 0.015, 0.01, m.black), 0, 0.16, 0.212));                 // laser stripers
+  body.add(put(cyl(0.03, 0.03, 0.05, m.panelSilver, 12), 0, 0.17, -0.25));         // APXS
+  body.add(strut(V(0, 0.2, -0.21), V(0, 0.17, -0.24), 0.008, m.metal, 6));
 
   const wheels = [];
   [-1, 1].forEach(function (side) {
-    rover.add(strut(V(side * 0.2, 0.18, 0.2), V(side * 0.22, 0.07, -0.2), 0.01, m.metal));
+    body.add(beam(V(side * 0.19, 0.2, 0.05), V(side * 0.235, 0.09, 0.2), 0.012, 0.016, m.metal));
+    body.add(beam(V(side * 0.19, 0.2, 0.05), V(side * 0.22, 0.13, -0.1), 0.012, 0.016, m.metal));
+    body.add(beam(V(side * 0.22, 0.13, -0.1), V(side * 0.235, 0.09, 0), 0.01, 0.014, m.metal));
+    body.add(beam(V(side * 0.22, 0.13, -0.1), V(side * 0.235, 0.09, -0.2), 0.01, 0.014, m.metal));
     [0.2, 0, -0.2].forEach(function (z) {
-      const wheel = treadWheel(0.065, 0.07, m.wheel, m.metal);
+      const wheel = roverWheel(0.065, 0.07, side, "sojourner", m);
       wheel.position.set(side * 0.24, 0.065, z);
       rover.add(wheel);
       wheels.push(wheel);
     });
   });
+  mergeStatic(body);
+  rover.add(body);
 
   rover.userData.size = 0.65;
   rover.userData.wheels = wheels;
@@ -762,13 +1103,26 @@ function createPathfinderLander() {
     return V(Math.cos(angle) * R, 0.12, Math.sin(angle) * R);
   });
 
-  lander.add(put(cyl(R * 1.02, R * 1.02, 0.12, m.white, 3), 0, 0.06, 0));
-  lander.add(put(cyl(0.28, 0.32, 0.3, m.gold, 12), 0, 0.28, 0));          // electronics in the middle
+  // Base petal and the electronics box in the middle (gold insulation), high-gain dish and low-gain antenna
+  lander.add(put(cyl(R * 1.02, R * 1.02, 0.12, m.panelWhite, 3), 0, 0.06, 0));
+  lander.add(put(cyl(0.28, 0.32, 0.3, m.foilGold, 12), 0, 0.28, 0));
+  lander.add(put(cyl(0.29, 0.29, 0.03, m.panelSilver, 12), 0, 0.44, 0));
+  lander.add(strut(V(0.18, 0.44, 0.05), V(0.22, 0.62, 0.05), 0.012, m.metal, 6));
+  const hga = dish(0.14, 0.04, m.dish, 20);
+  hga.position.set(0.22, 0.62, 0.05);
+  hga.rotation.z = -0.5;
+  lander.add(hga);
+  lander.add(strut(V(-0.15, 0.44, -0.12), V(-0.15, 0.78, -0.12), 0.006, m.metal, 6));
 
-  // Camera mast (it rose up after landing)
+  // Camera mast (it rose up after landing) with the stereo camera head (two eyes)
   const mast = new THREE.Group();
-  mast.add(strut(V(0, 0, 0), V(0, 0.55, 0), 0.02, m.metal));
-  mast.add(put(box(0.18, 0.1, 0.1, m.white), 0, 0.6, 0));
+  mast.add(strut(V(0, 0, 0), V(0, 0.55, 0), 0.02, m.panelSilver, 8));
+  mast.add(put(box(0.18, 0.1, 0.1, m.panelWhite), 0, 0.6, 0));
+  [-0.05, 0.05].forEach(function (x) {
+    const eye = cyl(0.022, 0.022, 0.03, m.black, 10);
+    eye.rotation.x = Math.PI / 2;
+    mast.add(put(eye, x, 0.6, 0.06));
+  });
   mast.position.set(0, 0.4, 0);
   lander.add(mast);
 
@@ -789,11 +1143,13 @@ function createPathfinderLander() {
 
     const fold = new THREE.Group(); // turns around the hinge line
     const h = length * 0.86;
-    const solar = triangle(V(-length / 2, 0.012, 0), V(length / 2, 0.012, 0), V(0, 0.012, h), m.solar);
-    const back = triangle(V(-length / 2, 0, 0), V(length / 2, 0, 0), V(0, 0, h), m.white);
-    solar.material = m.solar;
+    const solar = triangle(V(-length / 2 * 0.86, 0.014, 0.05), V(length / 2 * 0.86, 0.014, 0.05), V(0, 0.014, h * 0.9), m.solar);
+    const back = triangle(V(-length / 2, 0, 0), V(length / 2, 0, 0), V(0, 0, h), m.panelWhite);
     fold.add(back);
     fold.add(solar);
+    // the petal's frame along its two outer edges
+    fold.add(strut(V(-length / 2, 0.01, 0), V(0, 0.01, h), 0.012, m.panelSilver, 6));
+    fold.add(strut(V(length / 2, 0.01, 0), V(0, 0.01, h), 0.012, m.panelSilver, 6));
     hinge.add(fold);
     lander.add(hinge);
     hinges.push(fold);
@@ -824,7 +1180,7 @@ function createAirbagBall() {
     const theta = i * 2.39996;
     const direction = V(Math.cos(theta) * r, y, Math.sin(theta) * r);
 
-    const lobe = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 12), m.airbag);
+    const lobe = new THREE.Mesh(new THREE.SphereGeometry(0.62, 22, 16), m.airbagFabric);
     lobe.position.copy(direction).multiplyScalar(0.95);
     lobe.userData.direction = direction;
     ball.add(lobe);
@@ -844,48 +1200,102 @@ function createAirbagBall() {
 
 // ---------- Mars landers ----------
 
-// Viking lander (1976): six-sided body, three legs, dish antenna, two camera towers, sampler arm
+// Viking lander (1976). From NSSDCA: a six-sided aluminium/titanium base with alternating 1.09 m and 0.56 m
+// sides (about 1.5 m across), on three legs attached to the short sides; about 2 m tall. Shown: two
+// nuclear power generators under their wind covers, the 0.76 m high-gain dish on its mast, the two
+// facsimile cameras, the weather boom, the soil sampler boom and collector head, and the three descent
+// engines, each with 18 small nozzles (spread out so the exhaust disturbed the soil less).
 function createVikingLander() {
   const m = getMaterials();
   const lander = new THREE.Group();
 
-  lander.add(put(cyl(0.75, 0.75, 0.4, m.silver, 6), 0, 1.0, 0));
-  lander.add(put(cyl(0.76, 0.76, 0.05, m.white, 6), 0, 1.22, 0));
+  // the body: an equilateral triangle (side 2.21 m) with its corners cut off at 0.56 m
+  const R = 2.21 / Math.sqrt(3);
+  const outline = new THREE.Shape();
+  for (let k = 0; k < 3; k++) {
+    const corner = (k * Math.PI * 2) / 3 + Math.PI / 6;
+    const prev = corner - (Math.PI * 2) / 3;
+    const next = corner + (Math.PI * 2) / 3;
+    const cx = Math.cos(corner) * R, cz = Math.sin(corner) * R;
+    const toPrev = V(Math.cos(prev) * R - cx, 0, Math.sin(prev) * R - cz).normalize().multiplyScalar(0.56);
+    const toNext = V(Math.cos(next) * R - cx, 0, Math.sin(next) * R - cz).normalize().multiplyScalar(0.56);
+    const a = [cx + toPrev.x, -(cz + toPrev.z)];
+    const b = [cx + toNext.x, -(cz + toNext.z)];
+    if (k === 0) outline.moveTo(a[0], a[1]); else outline.lineTo(a[0], a[1]);
+    outline.lineTo(b[0], b[1]);
+  }
+  outline.closePath();
+  const bodyGeometry = new THREE.ExtrudeGeometry(outline, { depth: 0.46, bevelEnabled: false });
+  bodyGeometry.rotateX(-Math.PI / 2);
+  const bodyMesh = new THREE.Mesh(bodyGeometry, m.panelWhite);
+  bodyMesh.position.y = 0.78;
+  lander.add(bodyMesh);
+  const deck = new THREE.Mesh(bodyGeometry.clone().scale(1.01, 0.08, 1.01), m.panelGray);
+  deck.position.y = 1.22;
+  lander.add(deck);
+
+  // two power generators under their wind covers
   [-1, 1].forEach(function (side) {
-    lander.add(put(box(0.32, 0.28, 0.4, m.black), side * 0.5, 1.4, -0.15)); // power generator covers
+    lander.add(put(box(0.3, 0.26, 0.42, m.panelGray), side * 0.5, 1.39, -0.12));
+    for (let i = 0; i < 4; i++) lander.add(put(box(0.31, 0.02, 0.02, m.black), side * 0.5, 1.3 + i * 0.06, 0.1));
   });
 
-  // Dish antenna on a mast
+  // high-gain dish on its mast, and the UHF antenna
   lander.add(strut(V(0.1, 1.25, -0.35), V(0.25, 1.85, -0.35), 0.03, m.metal));
-  const antenna = dish(0.38, 0.12, m.dish);
+  const antenna = dish(0.38, 0.12, m.dish, 28);
   antenna.position.set(0.25, 1.9, -0.35);
   antenna.rotation.x = -0.6;
   lander.add(antenna);
+  lander.add(put(cyl(0.02, 0.02, 0.2, m.metal, 6), 0.25, 1.98, -0.32));
+  lander.add(put(cyl(0.035, 0.05, 0.3, m.panelWhite, 10), -0.35, 1.4, -0.45));
 
-  // Two camera towers
+  // two facsimile cameras: posts with domed heads and their viewing slits
   [-0.35, 0.35].forEach(function (x) {
-    lander.add(put(cyl(0.07, 0.07, 0.35, m.white, 12), x, 1.42, 0.55));
-    lander.add(put(cyl(0.08, 0.08, 0.1, m.metal, 12), x, 1.63, 0.55));
+    lander.add(put(cyl(0.07, 0.07, 0.35, m.panelWhite, 14), x, 1.42, 0.55));
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.085, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), m.panelSilver);
+    lander.add(put(dome, x, 1.6, 0.55));
+    lander.add(put(box(0.03, 0.08, 0.02, m.black), x, 1.62, 0.63));
   });
 
-  // Weather boom and the soil sampler arm
+  // weather boom and the soil sampler boom with its collector head
   lander.add(strut(V(-0.6, 1.25, 0.2), V(-0.95, 1.75, 0.55), 0.02, m.metal));
-  lander.add(put(box(0.12, 0.08, 0.08, m.white), -0.97, 1.78, 0.57));
-  lander.add(strut(V(0.55, 1.0, 0.45), V(1.3, 0.45, 1.15), 0.035, m.metal));
+  lander.add(put(box(0.12, 0.08, 0.08, m.panelWhite), -0.97, 1.78, 0.57));
+  lander.add(put(box(0.24, 0.2, 0.32, m.panelWhite), 0.55, 1.05, 0.4));
+  lander.add(strut(V(0.6, 1.0, 0.5), V(1.3, 0.45, 1.15), 0.035, m.panelSilver));
   lander.add(put(box(0.14, 0.1, 0.18, m.metal), 1.33, 0.4, 1.2));
 
-  landingLegs(lander, 3, 0.62, 0.95, 1.35, 0.17, m.metal, m.silver, Math.PI / 6);
+  // three legs on the short sides, with shock struts and footpads
+  for (let k = 0; k < 3; k++) {
+    const a = (k * Math.PI * 2) / 3 + Math.PI / 6;
+    const dir = V(Math.cos(a), 0, Math.sin(a));
+    const side = V(-dir.z, 0, dir.x);
+    const top = dir.clone().multiplyScalar(0.7).setY(0.95);
+    const foot = dir.clone().multiplyScalar(1.35).setY(0.1);
+    lander.add(strut(top, foot, 0.045, m.panelSilver, 10));
+    [-1, 1].forEach(function (s2) {
+      lander.add(strut(dir.clone().multiplyScalar(0.55).add(side.clone().multiplyScalar(s2 * 0.3)).setY(0.8), foot.clone().lerp(top, 0.45), 0.022, m.metal, 6));
+    });
+    const pad = footpad(0.17, m.panelSilver);
+    pad.position.copy(foot).setY(0.07);
+    lander.add(pad);
+  }
 
-  // Three groups of descent engines under the body
+  // three descent engines, each a housing with 18 small nozzles
   const engines = [];
   [0, 1, 2].forEach(function (k) {
     const angle = (k * Math.PI * 2) / 3 + Math.PI / 2;
     const x = Math.cos(angle) * 0.45;
     const z = Math.sin(angle) * 0.45;
-    lander.add(put(cyl(0.05, 0.1, 0.18, m.bell, 12), x, 0.72, z));
+    lander.add(put(box(0.24, 0.1, 0.16, m.panelGray), x, 0.74, z));
+    for (let i = 0; i < 18; i++) {
+      const nx = x + ((i % 6) - 2.5) * 0.035;
+      const nz = z + (Math.floor(i / 6) - 1) * 0.045;
+      lander.add(put(cyl(0.008, 0.014, 0.05, m.bell, 6), nx, 0.665, nz));
+    }
     engines.push(V(x, 0.6, z));
   });
 
+  mergeStatic(lander);
   lander.userData.size = 2.4;
   lander.userData.engines = engines;
   return lander;
@@ -973,8 +1383,11 @@ function createDeckLander(kind) {
 
 // ---------- Moon landers and the rover ----------
 
-// Surveyor (1966-68): a three-sided frame on three legs, with a solar panel and flat antenna on a mast.
-// It carried a big solid retro-rocket under it (userData.retro) that was dropped during the descent.
+// Surveyor (1966-68): a three-sided frame of aluminium tubes on three legs, about 3 m tall, with the solar
+// panel and flat planar-array antenna on top of a mast. Shown: the two white thermal compartments with
+// mirror tops, the TV camera with its tilting mirror hood, two omnidirectional antennas on booms, the
+// three vernier engines (used all the way down), crushable blocks and footpads. It carried a big solid
+// retro-rocket under it (userData.retro) that was dropped during the descent.
 function createSurveyor() {
   const m = getMaterials();
   const lander = new THREE.Group();
@@ -989,30 +1402,67 @@ function createSurveyor() {
     return V(Math.cos(angle) * 0.75, 0.75, Math.sin(angle) * 0.75);
   });
   for (let k = 0; k < 3; k++) {
-    lander.add(strut(top[k], top[(k + 1) % 3], 0.025, m.metal));
-    lander.add(strut(bottom[k], bottom[(k + 1) % 3], 0.025, m.metal));
-    lander.add(strut(top[k], bottom[k], 0.025, m.metal));
-    lander.add(strut(top[k], bottom[(k + 1) % 3], 0.02, m.metal));
+    lander.add(strut(top[k], top[(k + 1) % 3], 0.025, m.panelSilver, 8));
+    lander.add(strut(bottom[k], bottom[(k + 1) % 3], 0.025, m.panelSilver, 8));
+    lander.add(strut(top[k], bottom[k], 0.025, m.panelSilver, 8));
+    lander.add(strut(top[k], bottom[(k + 1) % 3], 0.02, m.panelSilver, 8));
+    lander.add(put(new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), m.metal), top[k].x, top[k].y, top[k].z));
   }
 
-  // Mast with the solar panel and the flat antenna
-  lander.add(strut(V(0, 0.8, 0), V(0, 2.9, 0), 0.03, m.metal));
-  const panel = box(0.85, 0.02, 0.6, m.solar);
+  // Mast with the solar panel (cells framed in aluminium) and the planar-array antenna
+  lander.add(strut(V(0, 0.8, 0), V(0, 2.9, 0), 0.03, m.panelSilver, 10));
+  const panel = new THREE.Group();
+  panel.add(box(0.85, 0.02, 0.6, m.solar));
+  panel.add(put(box(0.88, 0.015, 0.63, m.panelSilver), 0, -0.012, 0));
   panel.position.set(0.25, 2.9, 0);
   panel.rotation.z = 0.5;
   lander.add(panel);
-  const antenna = box(0.6, 0.02, 0.6, m.silver);
+  const antenna = new THREE.Group();
+  antenna.add(box(0.6, 0.02, 0.6, m.panelSilver));
+  for (let i = -2; i <= 2; i++) {
+    antenna.add(put(box(0.6, 0.024, 0.008, m.metal), 0, 0, i * 0.12));
+    antenna.add(put(box(0.008, 0.024, 0.6, m.metal), i * 0.12, 0, 0));
+  }
   antenna.position.set(-0.25, 2.7, 0.1);
   antenna.rotation.z = -0.7;
   lander.add(antenna);
 
-  // Two white electronics boxes and the TV camera with its mirror
-  lander.add(put(box(0.45, 0.35, 0.35, m.white), 0.25, 1.35, -0.35));
-  lander.add(put(box(0.45, 0.35, 0.35, m.white), -0.35, 1.35, 0.15));
-  lander.add(put(cyl(0.08, 0.08, 0.45, m.white, 12), 0.35, 1.85, 0.45));
-  lander.add(put(box(0.12, 0.08, 0.1, m.silver), 0.35, 2.1, 0.5));
+  // Two thermal compartments (white with mirror tops) and the TV camera with its mirror hood
+  [[0.25, 1.35, -0.35], [-0.35, 1.35, 0.15]].forEach(function (p) {
+    lander.add(put(box(0.45, 0.35, 0.35, m.panelWhite), p[0], p[1], p[2]));
+    lander.add(put(box(0.46, 0.02, 0.36, m.foilSilver), p[0], p[1] + 0.18, p[2]));
+  });
+  lander.add(put(cyl(0.08, 0.08, 0.45, m.panelWhite, 14), 0.35, 1.85, 0.45));
+  const hood = box(0.14, 0.1, 0.12, m.panelSilver);
+  hood.position.set(0.35, 2.12, 0.48);
+  hood.rotation.x = 0.4;
+  lander.add(hood);
+  const mirror = new THREE.Mesh(new THREE.CircleGeometry(0.05, 16), m.visor);
+  mirror.position.set(0.35, 2.12, 0.545);
+  mirror.rotation.x = 0.4;
+  lander.add(mirror);
 
-  landingLegs(lander, 3, 0.7, 0.85, 1.6, 0.16, m.metal, m.white, Math.PI / 3);
+  // Two omnidirectional antennas on folding booms
+  [[-0.8, 1.9, -0.5], [0.85, 1.75, -0.55]].forEach(function (p) {
+    lander.add(strut(V(p[0] * 0.5, 1.55, p[2] * 0.5), V(p[0], p[1], p[2]), 0.012, m.metal, 6));
+    lander.add(put(cyl(0.0, 0.05, 0.12, m.panelWhite, 10), p[0], p[1] + 0.06, p[2]));
+  });
+
+  // Legs: main strut, shock absorber, crushable block and footpad
+  for (let k = 0; k < 3; k++) {
+    const angle = Math.PI / 3 + (k * Math.PI * 2) / 3;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const legTop = V(cos * 0.7, 0.85, sin * 0.7);
+    const foot = V(cos * 1.6, 0.08, sin * 1.6);
+    lander.add(strut(legTop, foot, 0.04, m.panelSilver, 10));
+    lander.add(strut(V(cos * 0.45, 1.3, sin * 0.45), foot.clone().lerp(legTop, 0.45), 0.03, m.metal, 8));
+    lander.add(strut(V(cos * 0.42, 0.72, sin * 0.42), foot.clone().lerp(legTop, 0.35), 0.02, m.metal, 6));
+    lander.add(put(box(0.14, 0.1, 0.14, m.foilSilver), cos * 0.78, 0.66, sin * 0.78));   // crushable block
+    const pad = footpad(0.16, m.panelWhite);
+    pad.position.copy(foot).setY(0.06);
+    lander.add(pad);
+  }
 
   // Three small vernier engines (used all the way down)
   const engines = [];
@@ -1020,14 +1470,21 @@ function createSurveyor() {
     const angle = (k * Math.PI * 2) / 3;
     const x = Math.cos(angle) * 0.5;
     const z = Math.sin(angle) * 0.5;
-    lander.add(put(cyl(0.04, 0.08, 0.16, m.bell, 10), x, 0.68, z));
+    lander.add(put(cyl(0.05, 0.05, 0.08, m.panelGray, 10), x, 0.8, z));
+    const bell = nozzleBell(0.07, 0.16, m.nozzle, 14);
+    bell.position.set(x, 0.76, z);
+    lander.add(bell);
     engines.push(V(x, 0.58, z));
   });
+  mergeStatic(lander);
 
-  // The big retro-rocket (a ball with a nozzle) under the frame
+  // The big solid retro-rocket (a ball with a nozzle) under the frame
   const retro = new THREE.Group();
-  retro.add(new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 16), m.silver));
-  retro.add(put(cyl(0.12, 0.24, 0.3, m.bell, 16), 0, -0.5, 0));
+  retro.add(new THREE.Mesh(new THREE.SphereGeometry(0.42, 28, 18), m.panelGray));
+  retro.add(put(cyl(0.425, 0.425, 0.06, m.metal, 28), 0, 0.05, 0));
+  const retroBell = nozzleBell(0.24, 0.42, m.nozzle, 24);
+  retroBell.position.y = -0.3;
+  retro.add(retroBell);
   retro.position.set(0, 0.95, 0);
   lander.add(retro);
 
@@ -1038,79 +1495,159 @@ function createSurveyor() {
   return lander;
 }
 
-// Lunar Roving Vehicle (Apollo 15, 16, 17): open frame, four wire-mesh wheels, two seats, umbrella antenna
+// Apollo Lunar Roving Vehicle (Apollo 15-17). Built in meters from NASA's published sizes: 3.1 m long,
+// 2.3 m wheelbase, about 1.8 m track, 1.14 m tall; four 82 cm wheels of woven zinc-coated wire with
+// titanium chevron treads, each with its own drive motor and two suspension arms. Shown: the folding
+// aluminium chassis, two seats, the control console and T-shaped hand controller, fenders, the
+// communications relay unit (LCRU) with its umbrella-shaped high-gain antenna and helical low-gain
+// antenna, the TV camera (GCTA), and the rear tool carrier.
 function createLunarRover() {
   const m = getMaterials();
   const lrv = new THREE.Group();
+  const frame = new THREE.Group();
 
-  lrv.add(put(box(1.15, 0.08, 2.9, m.metal), 0, 0.55, 0));
-  lrv.add(put(box(1.0, 0.25, 0.6, m.silver), 0, 0.72, 1.1));    // front box (batteries and electronics)
-  lrv.add(put(box(1.0, 0.2, 0.55, m.silver), 0, 0.68, -1.15));  // rear tool carrier
+  // chassis: three sections with side rails, floor panels
+  [-0.55, 0.55].forEach(function (x) { frame.add(beam(V(x, 0.52, -1.5), V(x, 0.52, 1.5), 0.05, 0.06, m.panelSilver)); });
+  [-1.45, -0.75, 0, 0.75, 1.45].forEach(function (z) { frame.add(beam(V(-0.55, 0.52, z), V(0.55, 0.52, z), 0.04, 0.05, m.panelSilver)); });
+  frame.add(put(box(1.06, 0.025, 1.4, m.panelGray), 0, 0.5, 0));
+  // front section: two batteries and the drive electronics under dust covers
+  frame.add(put(box(1.0, 0.22, 0.62, m.panelSilver), 0, 0.66, 1.12));
+  [-0.25, 0.25].forEach(function (x) { frame.add(put(box(0.42, 0.04, 0.55, m.panelWhite), x, 0.79, 1.12)); });
+  // rear tool carrier (gate)
+  frame.add(put(box(1.0, 0.36, 0.08, m.panelSilver), 0, 0.78, -1.42));
+  frame.add(put(box(0.9, 0.18, 0.45, m.panelGray), 0, 0.62, -1.15));
+  [-0.4, 0, 0.4].forEach(function (x) { frame.add(strut(V(x, 0.6, -1.4), V(x, 1.0, -1.42), 0.015, m.metal, 6)); });
 
-  // Two seats
-  [-0.28, 0.28].forEach(function (x) {
-    lrv.add(put(box(0.45, 0.05, 0.45, m.accent), x, 0.68, 0));
-    lrv.add(put(box(0.45, 0.42, 0.05, m.accent), x, 0.9, -0.25));
+  // Two seats: tubular frames with webbing, and the footrests
+  [-0.3, 0.3].forEach(function (x) {
+    frame.add(put(box(0.46, 0.04, 0.45, m.accent), x, 0.66, -0.05));
+    const back = box(0.46, 0.42, 0.04, m.accent);
+    back.position.set(x, 0.88, -0.3);
+    back.rotation.x = -0.15;
+    frame.add(back);
+    frame.add(strut(V(x - 0.23, 0.52, -0.28), V(x - 0.23, 1.08, -0.32), 0.012, m.metal, 6));
+    frame.add(strut(V(x + 0.23, 0.52, -0.28), V(x + 0.23, 1.08, -0.32), 0.012, m.metal, 6));
+    frame.add(put(box(0.36, 0.03, 0.16, m.panelSilver), x, 0.55, 0.55));
   });
 
-  // Control console with the hand controller, between the seats
-  lrv.add(strut(V(0, 0.6, 0.4), V(0, 1.05, 0.55), 0.025, m.metal));
-  lrv.add(put(box(0.3, 0.2, 0.06, m.black), 0, 1.1, 0.58));
+  // Control and display console with the T-shaped hand controller between the seats
+  frame.add(strut(V(0, 0.52, 0.55), V(0, 1.0, 0.68), 0.025, m.metal, 8));
+  const consoleBox = box(0.36, 0.26, 0.08, m.black);
+  consoleBox.position.set(0, 1.05, 0.7);
+  consoleBox.rotation.x = -0.35;
+  frame.add(consoleBox);
+  frame.add(put(box(0.37, 0.04, 0.1, m.panelSilver), 0, 1.19, 0.66));
+  frame.add(strut(V(0, 0.66, 0.05), V(0, 0.84, 0.12), 0.015, m.metal, 6));
+  frame.add(put(box(0.14, 0.03, 0.03, m.black), 0, 0.85, 0.13));
 
-  // Umbrella-shaped high-gain antenna and TV camera at the front
-  lrv.add(strut(V(0.3, 0.8, 1.3), V(0.3, 1.65, 1.3), 0.02, m.metal));
-  const umbrella = dish(0.45, 0.2, m.dish, 12);
-  umbrella.position.set(0.3, 1.66, 1.3);
+  // Communications relay unit (LCRU) at the front, umbrella high-gain antenna, helical low-gain antenna
+  frame.add(put(box(0.42, 0.22, 0.25, m.panelWhite), 0.2, 0.95, 1.08));
+  frame.add(strut(V(0.32, 0.95, 1.05), V(0.32, 1.65, 1.05), 0.018, m.metal, 6));
+  const umbrella = dish(0.5, 0.18, m.mesh, 16);
+  umbrella.position.set(0.32, 1.66, 1.05);
   umbrella.rotation.x = 0.4;
-  lrv.add(umbrella);
-  lrv.add(strut(V(-0.3, 0.8, 1.35), V(-0.3, 1.35, 1.35), 0.02, m.metal));
-  lrv.add(put(box(0.2, 0.15, 0.25, m.white), -0.3, 1.4, 1.38));
-  lrv.add(strut(V(-0.45, 0.8, 1.2), V(-0.5, 1.9, 1.2), 0.006, m.metal)); // low-gain antenna
+  frame.add(umbrella);
+  [0, 1, 2, 3, 4, 5, 6, 7].forEach(function (i) {
+    const a = (i / 8) * Math.PI * 2;
+    const rib = V(Math.cos(a) * 0.5, 0.18, Math.sin(a) * 0.5).applyAxisAngle(V(1, 0, 0), 0.4);
+    frame.add(strut(V(0.32, 1.66, 1.05), V(0.32, 1.66, 1.05).add(rib), 0.006, m.silver, 4));
+  });
+  frame.add(strut(V(0.05, 0.95, 1.12), V(0.05, 1.95, 1.12), 0.02, m.panelWhite, 8));  // helical antenna
+  // TV camera (GCTA) on its mast, with its sun-shade hood
+  frame.add(strut(V(-0.3, 0.75, 1.08), V(-0.3, 1.3, 1.12), 0.018, m.metal, 6));
+  frame.add(put(box(0.18, 0.16, 0.28, m.panelWhite), -0.3, 1.38, 1.14));
+  const lens = cyl(0.05, 0.06, 0.12, m.black, 12);
+  lens.rotation.x = Math.PI / 2;
+  frame.add(put(lens, -0.3, 1.38, 1.32));
 
-  // Four wheels (zinc-coated wire mesh with titanium treads) under fenders
+  // Four wheels, each with a drive motor, two suspension arms and a fender
   const wheels = [];
   [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(function (c) {
-    const wheel = treadWheel(0.41, 0.23, m.mesh, m.silver);
-    wheel.position.set(c[0] * 0.95, 0.41, c[1] * 1.15);
+    const x = c[0] * 0.95;
+    const z = c[1] * 1.15;
+    const wheel = roverWheel(0.41, 0.23, c[0], "lrv", m);
+    wheel.position.set(x, 0.41, z);
     lrv.add(wheel);
     wheels.push(wheel);
-    lrv.add(put(box(0.3, 0.02, 0.95, m.silver), c[0] * 0.95, 0.86, c[1] * 1.15));
+    // upper and lower suspension arms from the chassis to the hub
+    frame.add(beam(V(c[0] * 0.55, 0.56, z - c[1] * 0.25), V(x - c[0] * 0.12, 0.47, z), 0.04, 0.04, m.panelSilver));
+    frame.add(beam(V(c[0] * 0.55, 0.44, z - c[1] * 0.25), V(x - c[0] * 0.12, 0.36, z), 0.04, 0.04, m.panelSilver));
+    frame.add(put(cyl(0.11, 0.11, 0.1, m.panelGray, 14), x - c[0] * 0.13, 0.41, z).rotateZ(Math.PI / 2)); // drive motor
+    // fender: a curved shell over the top of the wheel
+    const fender = new THREE.Mesh(new THREE.CylinderGeometry(0.47, 0.47, 0.3, 20, 1, true, Math.PI / 2 - 1.1, 2.2), m.panelGray);
+    fender.rotation.z = Math.PI / 2;
+    fender.position.set(x, 0.41, z);
+    frame.add(fender);
   });
+  mergeStatic(frame);
+  lrv.add(frame);
 
   lrv.userData.size = 3.1;
   lrv.userData.wheels = wheels;
   return lrv;
 }
 
-// Firefly Blue Ghost (2025): a wide, squat four-legged lander with side solar panels
+// Firefly Blue Ghost (2025): a wide, squat four-legged lander, about 2 m tall and 3.5 m wide (Firefly /
+// NASA CLPS). Shown: the gold-insulated body, solar panels framed on its sides, the payloads, cameras and
+// antennas on the top deck, four legs with footpads, the main engine and small thrusters.
 function createBlueGhost() {
   const m = getMaterials();
   const lander = new THREE.Group();
 
-  lander.add(put(box(1.5, 1.1, 1.5, m.gold), 0, 1.25, 0));
-  lander.add(put(box(1.55, 0.06, 1.55, m.white), 0, 1.83, 0));
+  const bodyGeometry = new THREE.BoxGeometry(1.5, 1.1, 1.5);
+  const bodyMesh = new THREE.Mesh(bodyGeometry, m.foilGold);
+  bodyMesh.position.y = 1.25;
+  lander.add(bodyMesh);
+  lander.add(put(box(1.55, 0.06, 1.55, m.panelWhite), 0, 1.83, 0));
+  lander.add(put(box(1.52, 0.05, 1.52, m.foilBlack), 0, 0.68, 0));
   [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (c) {
     const panel = box(c[0] ? 0.03 : 1.2, 0.85, c[1] ? 0.03 : 1.2, m.solar);
     panel.position.set(c[0] * 0.77, 1.25, c[1] * 0.77);
     lander.add(panel);
+    const frame = box(c[0] ? 0.02 : 1.26, 0.91, c[1] ? 0.02 : 1.26, m.panelSilver);
+    frame.position.set(c[0] * 0.765, 1.25, c[1] * 0.765);
+    lander.add(frame);
   });
 
-  // Instruments and cameras on the top deck
-  lander.add(put(box(0.3, 0.25, 0.3, m.silver), 0.4, 2.0, 0.4));
-  lander.add(put(cyl(0.12, 0.12, 0.3, m.white, 12), -0.45, 2.0, 0.35));
-  lander.add(strut(V(-0.4, 1.86, -0.4), V(-0.4, 2.5, -0.4), 0.025, m.metal));
-  lander.add(put(box(0.16, 0.1, 0.14, m.black), -0.4, 2.55, -0.4));
-  const antenna = dish(0.22, 0.07, m.dish);
+  // Payloads, cameras and antennas on the top deck
+  lander.add(put(box(0.3, 0.25, 0.3, m.foilSilver), 0.4, 1.98, 0.4));
+  lander.add(put(cyl(0.12, 0.12, 0.3, m.panelWhite, 14), -0.45, 2.0, 0.35));
+  lander.add(put(box(0.25, 0.12, 0.2, m.foilBlack), 0.05, 1.92, -0.05));
+  lander.add(strut(V(-0.4, 1.86, -0.4), V(-0.4, 2.3, -0.4), 0.025, m.metal));
+  lander.add(put(box(0.16, 0.1, 0.14, m.panelWhite), -0.4, 2.35, -0.4));
+  const lens = cyl(0.03, 0.03, 0.04, m.black, 10);
+  lens.rotation.x = Math.PI / 2;
+  lander.add(put(lens, -0.4, 2.35, -0.32));
+  const antenna = dish(0.22, 0.07, m.dish, 24);
   antenna.position.set(0.45, 1.95, -0.45);
   antenna.rotation.x = -0.4;
   lander.add(antenna);
 
-  // Four legs and the main engine
-  landingLegs(lander, 4, 0.72, 0.85, 1.75, 0.2, m.metal, m.silver, Math.PI / 4);
-  lander.add(put(cyl(0.12, 0.24, 0.35, m.bell, 16), 0, 0.55, 0));
+  // Four legs and the main engine, with small thrusters at the corners
+  for (let k = 0; k < 4; k++) {
+    const a = Math.PI / 4 + (k * Math.PI) / 2;
+    const dir = V(Math.cos(a), 0, Math.sin(a));
+    const side = V(-dir.z, 0, dir.x);
+    const top = dir.clone().multiplyScalar(0.95).setY(0.9);
+    const foot = dir.clone().multiplyScalar(1.75).setY(0.08);
+    lander.add(strut(top, foot, 0.05, m.panelSilver, 10));
+    [-1, 1].forEach(function (s2) {
+      lander.add(strut(dir.clone().multiplyScalar(0.75).add(side.clone().multiplyScalar(s2 * 0.4)).setY(0.72), foot.clone().lerp(top, 0.4), 0.025, m.metal, 6));
+    });
+    const pad = footpad(0.2, m.panelSilver);
+    pad.position.copy(foot).setY(0.08);
+    lander.add(pad);
+    const rcs = nozzleBell(0.035, 0.08, m.nozzle, 10);
+    rcs.position.copy(dir.clone().multiplyScalar(1.03)).setY(1.78);
+    lander.add(rcs);
+  }
+  const engine = nozzleBell(0.22, 0.42, m.nozzle, 28);
+  engine.position.y = 0.72;
+  lander.add(engine);
+  mergeStatic(lander);
 
   lander.userData.size = 3.5;
-  lander.userData.engines = [V(0, 0.35, 0)];
+  lander.userData.engines = [V(0, 0.3, 0)];
   return lander;
 }
 
@@ -1726,12 +2263,33 @@ function createOrion() {
 
 // Upright return capsules (heat shield at the bottom, -Y), with parachutes for landing or splashdown
 function createApolloCm() {
+  // Apollo command module: a cone 3.9 m across and 3.2 m tall (scaled 0.5): brown ablative heat shield,
+  // silver reflective skin, five windows, the side hatch and the docking tunnel on top
   const m = getMaterials();
   const capsule = new THREE.Group();
-  capsule.add(put(cyl(0.13, 0.98, 1.05, m.silver, 40), 0, 0.6, 0));
-  capsule.add(put(cyl(0.98, 0.9, 0.12, m.heat, 40), 0, 0.03, 0));
-  capsule.add(put(box(0.18, 0.12, 0.05, m.black), 0.3, 0.75, 0.55));            // windows
-  capsule.add(put(box(0.18, 0.12, 0.05, m.black), -0.3, 0.75, 0.55));
+  const g = new THREE.Group();
+  g.scale.setScalar(0.5);
+  capsule.add(g);
+  g.add(put(cyl(0.42, 1.95, 3.2, m.foilSilver, 48), 0, 1.75, 0));
+  const shield = new THREE.Mesh(new THREE.SphereGeometry(4.7, 48, 8, 0, Math.PI * 2, Math.PI - 0.43, 0.43), m.heat);
+  shield.position.y = 4.7 + 0.03;
+  g.add(shield);
+  g.add(put(cyl(1.97, 1.97, 0.18, m.heat, 48), 0, 0.12, 0));
+  // the cone wall leans in by about 25.6 degrees; place windows and hatch on its surface
+  const lean = Math.atan2(1.95 - 0.42, 3.2);
+  const wallR = function (y) { return 1.95 - ((y - 0.15) / 3.2) * (1.95 - 0.42) + 0.02; };
+  const onWall = function (mesh, angle, y) {
+    mesh.rotation.order = "YXZ";
+    mesh.rotation.set(-lean, angle, 0);
+    mesh.position.set(Math.sin(angle) * wallR(y), y, Math.cos(angle) * wallR(y));
+    g.add(mesh);
+  };
+  [-0.75, -0.4, 0, 0.4, 0.75].forEach(function (angle, i) {
+    onWall(box(0.3, 0.26, 0.04, m.black), angle, i === 2 ? 2.05 : 1.85);   // five windows
+  });
+  onWall(box(0.75, 0.7, 0.04, m.panelGray), 0, 1.15);                       // side hatch
+  g.add(put(cyl(0.36, 0.42, 0.35, m.panelSilver, 24), 0, 3.5, 0));                 // docking tunnel
+  mergeStatic(g);
   addChutes(capsule, 3, 1.4, 1.2);
   capsule.userData.size = 1.3;
   return capsule;

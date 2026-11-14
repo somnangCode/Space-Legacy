@@ -861,22 +861,18 @@ function surfaceShot(o) {
   const actors = [];
   let main = null;
   let ascent = null;
+  let ascentBase = 0;
   if (o.model) main = place(o.model, 0, 0, o.model === "lunar-module" ? 7 : o.model.indexOf("helicopter") === 0 ? 1.2 : 3);
   if (o.liftoff) {
-    // The descent stage stays behind; the ascent stage lifts off from it
-    const gold = new THREE.MeshStandardMaterial({ color: 0xc9a13b, metalness: 0.7, roughness: 0.35 });
-    const stage = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 1.6, 8), gold);
-    stage.position.set(0, heightAt(0, 0) + 1.9, 0);
-    shotGroup.add(stage);
-    [0, 1, 2, 3].forEach(function (i) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.4, 6), gold);
-      const a = i * Math.PI / 2 + Math.PI / 4;
-      leg.position.set(Math.cos(a) * 2.6, heightAt(0, 0) + 1.2, Math.sin(a) * 2.6);
-      leg.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5);
-      shotGroup.add(leg);
-    });
-    ascent = place("lm-ascent", 0, 0, 4);
-    ascent.position.y += 2.7;
+    // The real Lunar Module: its descent stage stays behind as the launch pad, and the ascent stage
+    // (the same model, at the same scale) lifts off from the top of it
+    const lmHolder = place("lunar-module", 0, 0, 7);
+    const lmModel = lmHolder.userData.model;
+    if (lmModel.userData.ascent) lmModel.userData.ascent.visible = false;
+    ascent = place("lm-ascent", 0, 0, 1);
+    ascent.userData.model.scale.copy(lmModel.scale);
+    ascent.position.y = lmHolder.position.y + (lmModel.userData.ascentBase || 0) * lmModel.scale.y;
+    ascentBase = ascent.position.y;
   }
   if (o.astronauts) {
     for (let i = 0; i < 2; i++) {
@@ -916,7 +912,7 @@ function surfaceShot(o) {
       if (ascent && u > 0.35) {
         if (!lifted) { lifted = true; play("ignition"); }
         const k = u - 0.35;
-        ascent.position.y = heightAt(0, 0) + 2.7 + k * k * 120;
+        ascent.position.y = ascentBase + k * k * 120;
         particles.emit(true, ascent.position.clone().add(V(0, -0.4, 0)), V(random(-1, 1), -12, random(-1, 1)), 0.4, 1.8, 0.2, 0.6, 0xffd59a, 0);
       }
       const focus = ascent && u > 0.35 ? ascent.position : main && o.drive ? main.position : base;

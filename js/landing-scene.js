@@ -902,6 +902,7 @@ function addNeighbors() {
     // radians from +z: beyond the lander and a little to its left in the view after touchdown (the camera
     // there swings from about 0.71 pi to pi, so straight behind the lander is avoided); among a few nearby
     // directions, the one where the generated ground is highest, so a rise in the terrain does not hide it
+    // (data/hardware.js can give a tested direction instead: landing.neighbors[].angle)
     let angle = n.angle;
     if (angle === undefined) {
       // prefer a direction with a clear line of sight from where the camera ends up (0, 4 m up, 18 m out)

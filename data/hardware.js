@@ -461,7 +461,9 @@ export const hardwareList = [
         surface: "Behind Intrepid, about 180 m away, stands Surveyor 3. Conrad and Bean will walk over to it on their second moonwalk."
       },
       // already on the ground: Surveyor 3, about 180 m away (NSSDCA); the direction in the scene is illustrative
-      neighbors: [{ model: "surveyor", scale: 1.05, distance: 180, label: "Surveyor 3 \u00B7 landed April 1967 \u00B7 about 180 m away" }]
+      // angle: the direction in the scene (radians from +z), not the real compass direction. Tested so
+      // Surveyor 3 stays in view, clear of the ground and the Lunar Module, through the end of the replay.
+      neighbors: [{ model: "surveyor", scale: 1.05, distance: 180, angle: Math.PI, label: "Surveyor 3 \u00B7 landed April 1967 \u00B7 about 180 m away" }]
     }
   },
 

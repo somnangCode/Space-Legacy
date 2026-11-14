@@ -38,6 +38,10 @@ Earth's day map, normal map, specular (ocean-shine) map and clouds load from the
 
 `data/mission-photos.js` lists one official NASA photo per mission replay, from the NASA Image and Video Library (https://images.nasa.gov). Each entry has the image's NASA ID, a caption based on NASA's own title and description, a credit and a link to the image's page. The pictures load from `images-assets.nasa.gov` when the card opens; offline, the card shows without a picture. Apollo 11, Curiosity and Perseverance use the local photos already listed above. NASA images are generally not copyrighted (NASA Images and Media Usage Guidelines); no NASA endorsement is implied. Chosen and checked 2026-11-14.
 
+## Models built in code (no files)
+
+All other spacecraft, rockets, rovers and landers are built in code (`js/models.js`, `js/rockets.js`, with shared detail in `js/model-detail.js`). Their surface textures (panel seams, rivets, insulation foil, solar cells, foam, nozzle heat tint) are drawn on a canvas in the browser, so no image files are needed and no licences apply. Sizes follow published NASA/NSSDCA figures where available; shapes are simplified, and each model is labelled as a representative model in the 3D viewer. No NASA insignia or logotype is drawn on any model.
+
 ## Official NASA 3D models (loaded from NASA, not stored here)
 
 `js/nasa-models.js` loads official models from NASA 3D Resources (https://science.nasa.gov/3d-resources/) straight from NASA's asset server (`assets.science.nasa.gov`, which allows this cross-origin), using `GLTFLoader` through the import map. NASA states the assets are free to download and use; see the NASA Images and Media Usage Guidelines (no NASA endorsement is implied). Nothing is copied into this project.

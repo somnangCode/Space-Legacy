@@ -321,6 +321,65 @@ The first countdown caption describes each pad, and rockets that were stacked on
 - Venus texture 404 fixed.
 - `docs/ASSETS.md` lists the Venus files by their real names.
 
+## In progress (2026-11-15): rebuilding the code-built models (Phase 1 of 3 done, awaiting review)
+Goal: bring the models built in code closer to NASA's 3D models. Models that already load NASA's file are unchanged.
+- **Shared toolkit `js/model-detail.js` (new):** textures drawn in code, with nothing downloaded:
+  - panel seams and rivets, paint speckle, spray-on foam, corrugation;
+  - crinkled gold, silver and black insulation foil;
+  - solar cells, plus heat-tinted engine nozzles with cooling tubes.
+
+  It also builds real shapes (curved engine bells, ogive nose cones, joint rings) and merges still parts to keep draw calls low.
+- **All 20 rockets (`js/rockets.js`):**
+  - panel seams and joint rings, ogive noses and curved bells;
+  - Saturn V: fins, engine fairings, ullage motors, the escape tower truss;
+  - Shuttle: external-tank foam and ribs, booster segments and struts, orbiter windows, OMS pods and swept tail;
+  - Falcon 9: grid fins; plus booster struts and cable raceways.
+
+  Paint, accessories and stage separation work as before.
+- **Apollo (`js/models.js`):**
+  - **CSM:** radiator panels, four RCS quads, the SPS bell, the high-gain antenna, windows and the docking probe.
+  - **Lunar Module:** built from NSSDCA sizes, so it now has real proportions (wider, with footpads 9.4 m apart). It has:
+    - gold and black foil;
+    - a faceted cabin with its triangular windows;
+    - RCS quads, the radar and S-band dishes;
+    - a ladder and porch, plus contact probes.
+  - **CM:** windows and hatch set on the cone wall.
+  - **LM liftoff:** the scene now shows the real descent stage (the stand-in gold cylinder is gone), and the ascent stage lifts off from it at the same scale.
+- **Rovers:**
+  - **Curiosity and Perseverance:** new wheels, with chevron grousers (Curiosity) or 48 curved grousers (Perseverance) and curved spokes. They also have:
+    - the rocker-bogie with its differential bar and steering actuators;
+    - mast cameras, the MMRTG between two heat exchangers;
+    - the arm and turret, and hazard cameras.
+  - **Spirit/Opportunity:** framed solar wings, the Pancam mast, the dish antenna and the instrument arm.
+  - **Sojourner:** gold body, APXS and laser stripers.
+  - **LRV:** a tubular chassis, wishbone suspension and drive motors, fenders, the console and hand controller, the LCRU with its umbrella antenna, the TV camera and the tool carrier.
+- **Landers:**
+  - **Viking:** the real body shape from NSSDCA (a hexagon with alternating 1.09 m and 0.56 m sides), plus its 18-nozzle descent engines.
+  - **Surveyor:** mirror-topped compartments, the planar-array grid, omni antennas, crushable blocks and real nozzle bells.
+  - **Blue Ghost:** foil and framed panels.
+  - **Pathfinder:** high-gain dish and a stereo camera head.
+  - **Airbags:** fabric wrinkles.
+- **Apollo 12 scene fix:** the wider, real-size LM hid Surveyor 3. It now has a tested direction (`angle` in `data/hardware.js`) and is fully in view through the end of the replay (checked by ray casting from the scene camera).
+- **Size:** every rebuilt model is 0.3k–16k triangles (budget 60k).
+  - Draw calls: rockets 30–60, as planned (each tube stays separate so separation works).
+  - Rovers about 24–50 (Curiosity 50, versus 155 meshes before).
+  - Landers 7–23.
+- **Tested in the browser:**
+  - every model builds and keeps its hooks (`wheels`, `engines`, `retro`, `setPetals`, `flame`, `boosters`);
+  - landing replays: Surveyor 3, Viking 1, Pathfinder (petals and Sojourner), Spirit (airbags and rover), Curiosity (sky crane), Apollo 15 (LM and LRV), Blue Ghost and Apollo 12;
+  - LM descent and liftoff films;
+  - driving Curiosity in Gale Crater and the LRV at Hadley (wheel spin and steering);
+  - the Missions 3D viewer at phone width;
+  - the Shuttle launch;
+  - no console errors from the site.
+- **Not verified:**
+  - frame rate on the team's real computers;
+  - every rocket's full launch (only the Shuttle's was run after the rebuild);
+  - the builder bay's look with each rebuilt rocket.
+- **Next (after review):**
+  - Phase 2: the other spacecraft, including our moving versions of Hubble, Webb, Galileo and Cassini, plus capsules, stations, Phoenix, InSight, the sky crane and Ingenuity.
+  - Phase 3: equipment and the astronaut.
+
 ## Completed (2026-11-15): NASA resources, recommendation 4 (Apollo 12 and Surveyor 3)
 - **Two new Moon sites, about 180 m apart:** Surveyor 3 (landed April 20, 1967 UTC) and the Apollo 12 Lunar Module Intrepid (landed November 19, 1969). This is the only time astronauts visited a spacecraft that had landed before them.
 - **Data:**
