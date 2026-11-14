@@ -24,6 +24,7 @@ import { createGlow } from "./glow.js";
 import { play } from "./sounds.js";
 import { hasNasaModel, nasaModelInfo, upgradeToNasaModel } from "./nasa-models.js";
 import { onThemeChange, accentNumber } from "./theme.js";
+import { ROVER_DISTANCES, roverForItem } from "../data/rover-distances.js";
 
 // An icon for each choice in the left list, drawn as one set (Master Doc 13: each icon shows what it is,
 // e.g. a moon for the Moon, a spacecraft for Spacecraft), in the site's thin-line style
@@ -1158,6 +1159,103 @@ function scrollToMission(id) {
   if (block && block.scrollIntoView) block.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+// ----- "How far it drove": every rover on the Moon and Mars, this one highlighted -----
+// Data: NASA/JPL infographic (data/rover-distances.js). Bars share one scale; the dashed line is a
+// marathon. Moon / Mars / All filters; a NASA rover's name opens its own page.
+const raceSection = document.getElementById("detail-distance-section");
+const raceBox = document.getElementById("detail-distance");
+let raceFilter = "all";
+function renderRoverRace(item) {
+  const here = roverForItem(item.id);
+  raceSection.classList.toggle("hidden", !here);
+  if (!here) return;
+  const data = ROVER_DISTANCES;
+  const max = 48; // km at the right edge (just past the longest drive, 45.2 km)
+  const pct = function (km) { return Math.max(0.6, km / max * 100).toFixed(2) + "%"; };
+  raceBox.innerHTML = "";
+
+  const intro = document.createElement("p");
+  intro.className = "race-intro";
+  const rank = data.rovers.filter(function (r) { return r.km > here.km; }).length + 1;
+  intro.textContent = here.name + " drove " + here.km + " km" + (here.estimate ? " (estimated)" : "") +
+    (here.operating ? " by " + data.asOf + ", and is still driving" : "") +
+    ". That is " + (data.rovers.filter(function (r) { return r.km === here.km; }).length > 1 ? "tied for number " : "number ") +
+    rank + " of the " + data.rovers.length + " rovers that have driven on the Moon and Mars.";
+  raceBox.appendChild(intro);
+
+  // filters
+  const filters = document.createElement("div");
+  filters.className = "race-filters";
+  filters.setAttribute("role", "group");
+  filters.setAttribute("aria-label", "Show rovers on");
+  [["all", "All"], ["Moon", "Moon"], ["Mars", "Mars"]].forEach(function (f) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "small-button" + (raceFilter === f[0] ? " active" : "");
+    b.textContent = f[1];
+    b.setAttribute("aria-pressed", raceFilter === f[0] ? "true" : "false");
+    b.addEventListener("click", function () { raceFilter = f[0]; play("tick"); renderRoverRace(item); });
+    filters.appendChild(b);
+  });
+  raceBox.appendChild(filters);
+
+  // the bars
+  const chart = document.createElement("div");
+  chart.className = "race-chart";
+  chart.style.setProperty("--marathon", pct(data.marathonKm)); // a dashed mark in every track, on the same scale
+  data.rovers.filter(function (r) { return raceFilter === "all" || r.world === raceFilter; }).forEach(function (r) {
+    const row = document.createElement("div");
+    row.className = "race-row " + (r.world === "Moon" ? "moon" : "mars") + (r === here ? " here" : "");
+    const name = document.createElement(r.item && r !== here ? "button" : "span");
+    name.className = "race-name" + (r.item && r !== here ? " inline-link" : "");
+    name.textContent = r.name;
+    if (r.item && r !== here) {
+      name.type = "button";
+      name.title = "Open " + r.name;
+      name.addEventListener("click", function () { play("select"); openDetail(r.item); });
+    }
+    const years = document.createElement("span");
+    years.className = "race-years";
+    years.textContent = r.world + " \u00B7 " + r.years;
+    const label = document.createElement("span");
+    label.className = "race-label";
+    label.appendChild(name);
+    label.appendChild(years);
+    const track = document.createElement("span");
+    track.className = "race-track";
+    const bar = document.createElement("span");
+    bar.className = "race-bar" + (r.operating ? " operating" : "");
+    bar.style.width = pct(r.km);
+    track.appendChild(bar);
+    const value = document.createElement("span");
+    value.className = "race-km";
+    value.textContent = r.km + " km" + (r.estimate ? " (est.)" : "");
+    row.appendChild(label);
+    row.appendChild(track);
+    row.appendChild(value);
+    row.setAttribute("aria-label", r.name + ", " + r.world + ", " + r.km + " km" + (r.estimate ? ", estimated" : "") + (r.operating ? ", still driving" : ""));
+    chart.appendChild(row);
+  });
+  raceBox.appendChild(chart);
+
+  const legend = document.createElement("p");
+  legend.className = "race-legend";
+  legend.innerHTML = '<span><i class="sw mars"></i>Mars</span><span><i class="sw moon"></i>Moon</span><span><i class="sw marathon"></i>Marathon (42.195 km)</span><span><i class="sw operating"></i>Still driving</span>';
+  raceBox.appendChild(legend);
+
+  const source = document.createElement("p");
+  source.className = "race-source";
+  source.appendChild(document.createTextNode("Source: "));
+  const a = document.createElement("a");
+  a.href = data.source.url;
+  a.target = "_blank";
+  a.rel = "noopener";
+  a.textContent = data.source.label;
+  source.appendChild(a);
+  source.appendChild(document.createTextNode(". Includes Soviet and Chinese rovers, as NASA's chart does." + (here.note ? " " + here.note : "")));
+  raceBox.appendChild(source);
+}
+
 function openDetail(id) {
   const item = findItem(id);
   if (!item) return;
@@ -1234,6 +1332,7 @@ function openDetail(id) {
     return li;
   });
   detailSpecs.parentElement.classList.toggle("hidden", resolved.specs.length === 0);
+  renderRoverRace(item);
 
   listItems(detailTimeline, resolved.timeline, function (entry) {
     const li = document.createElement("li");

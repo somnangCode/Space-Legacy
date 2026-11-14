@@ -890,6 +890,96 @@ function addActor(object) {
   return object;
 }
 
+// Hardware that was already on the ground nearby (landing.neighbors in data/hardware.js), such as
+// Surveyor 3 next to Apollo 12. The distance is the real one; the direction is chosen so the neighbor
+// stands behind the lander in the view after touchdown (the scene is not laid out by compass direction).
+function neighborView() { return Boolean(item && item.landing && item.landing.neighbors && item.landing.neighbors.length); }
+
+function addNeighbors() {
+  (item.landing.neighbors || []).forEach(function (n) {
+    const model = createModel(n.model);
+    model.scale.setScalar(n.scale || 1);
+    // radians from +z: beyond the lander and a little to its left in the view after touchdown (the camera
+    // there swings from about 0.71 pi to pi, so straight behind the lander is avoided); among a few nearby
+    // directions, the one where the generated ground is highest, so a rise in the terrain does not hide it
+    let angle = n.angle;
+    if (angle === undefined) {
+      // prefer a direction with a clear line of sight from where the camera ends up (0, 4 m up, 18 m out)
+      const eye = V(0, 7.5, 18); // where the camera ends up after touchdown (see surfacePhase)
+      const clear = function (a) {
+        const tx = Math.sin(a) * n.distance;
+        const tz = Math.cos(a) * n.distance;
+        const top = groundY(tx, tz) + 2.5;
+        for (let s = 1; s < 40; s++) {
+          const f = s / 40;
+          const x = eye.x + (tx - eye.x) * f;
+          const z = eye.z + (tz - eye.z) * f;
+          if (groundY(x, z) > eye.y + (top - eye.y) * f) return false;
+        }
+        return true;
+      };
+      // 10 to 35 degrees to either side of straight behind the lander (never right behind it, where the
+      // lander itself would hide it), nearest first
+      const candidates = [1.1, 0.9, 1.07, 0.93, 1.13, 0.87, 1.16, 0.84, 1.19, 0.81];
+      const open = candidates.find(function (k) { return clear(Math.PI * k); });
+      if (open !== undefined) angle = Math.PI * open;
+      else {
+        let best = -Infinity;
+        candidates.forEach(function (k) {
+          const a = Math.PI * k;
+          const h = groundY(Math.sin(a) * n.distance, Math.cos(a) * n.distance);
+          if (h > best) { best = h; angle = a; }
+        });
+      }
+    }
+    const x = Math.sin(angle) * n.distance;
+    const z = Math.cos(angle) * n.distance;
+    model.position.set(x, groundY(x, z), z);
+    model.rotation.y = 0.6;
+    if (model.userData.setArrays) model.userData.setArrays(1);
+    if (model.userData.retro) model.userData.retro.visible = false; // dropped during its own landing long ago
+    addActor(model);
+    if (n.label) {
+      const label = neighborLabel(n.label);
+      const box = new THREE.Box3().setFromObject(model);
+      label.position.set(x, box.max.y + 3, z);
+      actorRoot.add(label);
+    }
+  });
+}
+
+// A small text tag that stays the same size on screen, so a far-away neighbor can be found
+function neighborLabel(text) {
+  const canvas = document.createElement("canvas");
+  const font = "26px IBM Plex Sans, Arial, sans-serif";
+  let ctx = canvas.getContext && canvas.getContext("2d");
+  let width = 512;
+  if (ctx) {
+    ctx.font = font;
+    width = Math.ceil(ctx.measureText(text).width) + 40; // the canvas fits the whole sentence
+  }
+  canvas.width = width;
+  canvas.height = 64;
+  ctx = canvas.getContext && canvas.getContext("2d");
+  if (ctx) {
+    ctx.fillStyle = "rgba(6, 10, 18, 0.72)";
+    ctx.fillRect(0, 8, width, 48);
+    ctx.fillStyle = "#e8eef8";
+    ctx.font = font;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, width / 2, 33);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  // drawn over the terrain, so it always marks where the neighbor is
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false, depthTest: false, sizeAttenuation: false }));
+  sprite.scale.set(0.04 * width / 64, 0.04, 1); // keeps the text's proportions
+  sprite.center.set(0.5, 0);
+  sprite.renderOrder = 5;
+  return sprite;
+}
+
 function makeModel(name, scale) {
   const model = createModel(name);
   model.scale.setScalar(scale || 1);
@@ -1299,7 +1389,9 @@ function surfacePhase(lander) {
         astronaut.userData.walk(u * 30 + i);
       });
       const angle = -0.9 + u * 0.9;
-      follow(V(0, 1.5, 0), V(Math.sin(angle) * 18, 4, Math.cos(angle) * 18));
+      // a little higher where older hardware stands nearby (Apollo 12 and Surveyor 3), so it shows over the ground
+      if (neighborView()) follow(V(0, 3, 0), V(Math.sin(angle) * 18, 4.5, Math.cos(angle) * 18)); // eye 7.5 m up, horizon in view
+      else follow(V(0, 1.5, 0), V(Math.sin(angle) * 18, 4, Math.cos(angle) * 18));
     }
   };
 }
@@ -2132,6 +2224,7 @@ function restart() {
   pauseButton.textContent = "Pause";
 
   phases = buildPhases();
+  addNeighbors();
   totalTime = phases.reduce(function (sum, phase) { return sum + phase.duration; }, 0);
   elapsed = 0;
   enterPhase(0);

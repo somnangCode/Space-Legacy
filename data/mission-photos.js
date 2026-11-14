@@ -30,6 +30,8 @@ const PHOTOS = {
   apollo11: function () { return local("apollo11"); },
   curiosity: function () { return local("curiosity"); },
   perseverance: function () { return local("perseverance"); },
+  // AS12-48-7136 (NASA caption, checked 2026-11-15): Conrad at Surveyor 3, Intrepid about 600 ft (180 m) behind
+  apollo12: nasa("as12-48-7136", "Pete Conrad examines Surveyor 3; Apollo 12's lunar module Intrepid is parked about 180 m behind (November 20, 1969). Photo by Alan Bean."),
   apollo15: nasa("S71-33781", "The Apollo 15 space vehicle on its way from the Vehicle Assembly Building to Pad A (May 1971)."),
   apollo17: nasa("S72-55482", "Launch of the Apollo 17 lunar landing mission (December 1972)."),
   gemini3: nasa("s65-20604", "John Young is helped into the Gemini III spacecraft in the white room (March 23, 1965)."),
@@ -61,6 +63,7 @@ const BY_TITLE = {
   "Apollo 11": "apollo11", "Apollo 11 Eagle": "apollo11",
   "Curiosity": "curiosity", "Mars Science Laboratory": "curiosity",
   "Perseverance": "perseverance", "Mars 2020": "perseverance",
+  "Apollo 12": "apollo12", "Surveyor 3": "apollo12",
   "Apollo 15": "apollo15", "Apollo 17": "apollo17", "Gemini III": "gemini3",
   "STS-31 (Hubble deployment)": "sts31", "Hubble Space Telescope": "sts31",
   "Crew Dragon Demo-2": "demo2", "Artemis I": "artemis1", "Artemis I (Orion)": "artemis1",

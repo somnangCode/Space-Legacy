@@ -32,12 +32,15 @@ export const hardwareList = [
       { date: "July 20, 1969", text: "Neil Armstrong and Buzz Aldrin land Eagle in the Sea of Tranquility at 20:17 UTC. Michael Collins stays in lunar orbit aboard the command module." },
       { date: "July 20, 1969", text: "In about two and a half hours on the surface, the astronauts collect 21.55 kg (47.5 lb) of rock samples, take photographs, and set up the Passive Seismic Experiment Package and the Laser Ranging Retroreflector." },
       { date: "July 21, 1969", text: "The astronauts lift off in Eagle's ascent stage at 17:54 UTC. The descent stage stays on the surface and serves as the launch pad." },
-      { date: "August 1, 1969", text: "Lick Observatory in California records the first laser reflection from the Apollo 11 reflector." }
+      { date: "July 22, 1969", text: "After the crew moves back into Columbia, Eagle's ascent stage is cast off into lunar orbit at 00:01 UTC. NASA does not know what happened to it; it is assumed to have crashed into the Moon within the following 1 to 4 months." },
+      { date: "August 1, 1969", text: "Lick Observatory in California records the first laser reflection from the Apollo 11 reflector." },
+      { date: "August 27, 1969", text: "Near noon of its second lunar day, the seismic experiment package stops accepting commands from Earth, and the experiment ends." }
     ],
     contributions: [
       "The seismic experiment returned the first lunar seismic data, for about three weeks after the astronauts left.",
       "The laser reflector lets observatories measure the Earth-Moon distance very precisely. Its data has shown that the Moon is slowly moving away from Earth (about 3.8 cm per year) and has been used to test Einstein's theory of general relativity.",
-      "The 21.55 kg of lunar rock samples were returned to Earth for laboratory study."
+      "The 21.55 kg of lunar rock samples were returned to Earth for laboratory study.",
+      "The early experiment package (EASEP) weighed 48 kg and stood about 17 m south of the lunar module. Solar panels powered its seismometer and a dust detector. The laser reflector, about 5 m away, needs no power at all."
     ],
     status: {
       text:
@@ -52,6 +55,7 @@ export const hardwareList = [
     sources: [
       { label: "NASA: Aldrin Gazes at Tranquility Base (image and caption)", url: "https://www.nasa.gov/image-article/aldrin-gazes-tranquility-base" },
       { label: "NASA NSSDC: Apollo landing site coordinates", url: "https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html" },
+      { label: "NASA NSSDCA: Apollo 11 Lunar Module / EASEP (1969-059C)", url: "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C" },
       { label: "LROC: Coordinates of human features (PDF)", url: "https://www.lroc.asu.edu/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf" },
       { label: "APS Physics: Lunar laser ranging turns 50", url: "https://physics.aps.org/articles/v12/84" },
       { label: "Space Center Houston: Apollo 11 facts (not NASA)", url: "https://spacecenter.org/apollo-11-three-steps-one-giant-leap/" }
@@ -214,14 +218,16 @@ export const hardwareList = [
       { date: "July 26, 1971", text: "Launches at 9:34 a.m. EDT from Launch Pad 39A, Kennedy Space Center. Crew: David Scott (commander), James Irwin (lunar module pilot) and Alfred Worden (command module pilot, who stays in lunar orbit)." },
       { date: "July 30, 1971", text: "Scott and Irwin land at Hadley-Apennine at 22:16 UTC." },
       { date: "July 31, 1971", text: "The crew deploys the first Lunar Roving Vehicle. Its front steering briefly stops working, so they drive with rear-wheel steering; it is fixed the next day." },
-      { date: "August 2, 1971", text: "The ascent stage lifts off from the Moon at 17:11 UTC. The descent stage stays behind." },
+      { date: "August 2, 1971", text: "The ascent stage lifts off from the Moon at 17:11 UTC. The descent stage stays behind. Before leaving, the crew sets down a plaque and a small figure in memory of the fourteen American and Soviet space explorers who had died, and Scott drops a hammer and a feather on camera: they fall at the same rate in the vacuum." },
+      { date: "August 3, 1971", text: "The ascent stage is cast off at 01:04 UTC and crashes into the Moon about two hours later, at 26.36\u00B0 N, 0.25\u00B0 E." },
       { date: "August 7, 1971", text: "Splashdown in the Pacific Ocean." }
     ],
     contributions: [
       "Three moonwalks totaling 18 hours 35 minutes, plus a 33-minute stand-up excursion on landing day.",
       "Three rover drives of 10.3 km, 12.5 km and 5.1 km: 27.9 km in total.",
       "77.31 kg of lunar rock and soil samples returned to Earth.",
-      "An experiments package (ALSEP) was left running on the surface until it was shut down on September 30, 1977."
+      "An experiments package (ALSEP) was left running on the surface until it was shut down on September 30, 1977.",
+      "The experiments ran on a SNAP-27 nuclear generator: the heat of a plutonium-238 fuel rod was turned into about 70 W of electricity by 442 thermocouples (63.5 W after one year)."
     ],
     status: {
       text: "The lunar module's descent stage and the experiments package were left at Hadley-Apennine. The experiments were switched off in 1977.",
@@ -344,6 +350,118 @@ export const hardwareList = [
         touchdown: "The engines shut off 3.4 m above the ground. Surveyor drops the rest of the way and touches down at about 3 m/s.",
         surface: "Surveyor 1 is the first American spacecraft to soft-land on the Moon. Its camera starts sending pictures home."
       }
+    }
+  },
+
+  // ----- Surveyor 3 and Apollo 12 (NASA resources, 2026-11-15): two pieces of hardware about 180 m apart.
+  // Facts from the NSSDCA Master Catalog (1967-035A and 1969-099C, read November 14, 2026), NASA Science's
+  // Surveyor 3 page, and the NASA caption of photo AS12-48-7136.
+  {
+    id: "surveyor3",
+    kind: "landing",
+    name: "Surveyor 3",
+    breadcrumbName: "Surveyor 3",
+    destination: "Moon",
+    mission: "Surveyor 3",
+    location: "A 200 m crater in southeastern Oceanus Procellarum (Ocean of Storms), about 370 km south of Copernicus crater",
+    lat: -3.0162,
+    lon: -23.418,
+    landingDate: "April 20, 1967 (00:04 UTC; April 19 in the U.S.)",
+    image: null,
+    summary:
+      "The first Surveyor with a scoop. It dug into the Moon and showed the ground could hold an Apollo lunar module. Two and a half years later, Apollo 12 landed about 180 m away and its astronauts came to look at it.",
+    purpose:
+      "Surveyor 3 was sent to practise soft landings for Apollo, take pictures, and test the lunar soil: how strong it is, how it reflects radar, and how it holds heat.",
+    history: [
+      { date: "April 17, 1967", text: "Launches at 07:05 UTC on an Atlas-Centaur from Launch Complex 36B, first parking in Earth orbit before heading for the Moon." },
+      { date: "April 20, 1967", text: "Bright rocks confuse its radar, so the engines do not shut off: Surveyor 3 touches down three times (bouncing about 10 m, then 3 m high) before a command from Earth stops the engines. It comes to rest on a 14-degree slope inside a crater." },
+      { date: "April 1967", text: "Two days after landing, its scoop starts digging trenches, up to 18 cm deep." },
+      { date: "May 4, 1967", text: "The last data arrive, the day after local sunset. Surveyor 3 does not wake up after the two-week lunar night." },
+      { date: "November 20, 1969", text: "Apollo 12 astronauts Pete Conrad and Alan Bean walk over and take about 10 kg of parts, including the TV camera and the scoop, back to Earth to study what 2.5 years on the Moon did to them." }
+    ],
+    contributions: [
+      "Sent 6,326 TV pictures of its surroundings.",
+      "Its scoop dug trenches and made bearing and impact tests for 18 hours 22 minutes. The soil behaved like wet sand, strong enough (about 0.7 kg per square centimetre) to hold up an Apollo lunar module.",
+      "Photographed an eclipse of the Sun by the Earth, seen from the Moon.",
+      "Its camera, brought back by Apollo 12, is now on display at the Smithsonian National Air and Space Museum."
+    ],
+    status: {
+      text: "Silent since May 4, 1967. It is still in its crater, without the parts Apollo 12 brought home. Apollo 12's lunar module descent stage stands about 180 m away.",
+      asOf: "NASA NSSDCA catalog, read November 14, 2026.",
+      sourceLabel: "NASA NSSDCA: Surveyor 3 (1967-035A)",
+      sourceUrl: "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1967-035A"
+    },
+    markerNote: "The marker shows the landing site. Apollo 12 landed about 180 m away, so the two markers almost overlap.",
+    coordinateNote: "Coordinates from NASA's NSSDCA catalog, measured from Lunar Reconnaissance Orbiter images (3.0162 S, 336.582 E). The marker position on the globe is approximate.",
+    sources: [
+      { label: "NASA NSSDCA: Surveyor 3 (1967-035A)", url: "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1967-035A" },
+      { label: "NASA Science: Surveyor 3", url: "https://science.nasa.gov/mission/surveyor-3/" },
+      { label: "NASA Image Library: AS12-48-7136, Conrad examines Surveyor 3", url: "https://images.nasa.gov/details/as12-48-7136" }
+    ],
+    landing: {
+      style: "retro", lander: "surveyor", scale: 1.05,
+      captions: {
+        braking: "At 76 km up, the main retro-rocket fires and slows Surveyor 3 from 2,626 m/s to 137 m/s. Then it is dropped.",
+        approach: "Three small vernier engines, guided by radar, control the rest of the descent.",
+        touchdown: "Bright rocks confuse the radar and the engines keep firing: Surveyor 3 touches down three times before Earth sends the command to stop them.",
+        surface: "Surveyor 3 settles on a 14-degree slope inside a crater, and its camera starts sending pictures home."
+      }
+    }
+  },
+
+  {
+    id: "apollo12",
+    kind: "landing",
+    name: "Apollo 12 Lunar Module Intrepid and surface experiments",
+    breadcrumbName: "Apollo 12",
+    destination: "Moon",
+    mission: "Apollo 12",
+    location: "Ocean of Storms (Oceanus Procellarum), about 180 m from Surveyor 3",
+    lat: -3.0128,
+    lon: -23.4219,
+    landingDate: "November 19, 1969 (06:54 UTC)",
+    image: null,
+    summary:
+      "The second crewed Moon landing came down within about 180 m of Surveyor 3, an uncrewed lander that had arrived two and a half years earlier. Intrepid's descent stage and a nuclear-powered science station were left behind.",
+    purpose:
+      "Intrepid carried Pete Conrad and Alan Bean to the surface and back to Richard Gordon in the command module in lunar orbit. On the Moon they set up a long-running science station (ALSEP), collected rocks, and visited Surveyor 3.",
+    history: [
+      { date: "November 14, 1969", text: "Apollo 12 launches on a Saturn V from Cape Canaveral." },
+      { date: "November 19, 1969", text: "Conrad and Bean land Intrepid at 06:54 UTC in the Ocean of Storms, within about 180 m of Surveyor 3." },
+      { date: "November 19, 1969", text: "First moonwalk: they collect samples and set up the science station. The TV camera is pointed at the Sun by accident and stops working." },
+      { date: "November 20, 1969", text: "Second moonwalk: a 1.3 km geology walk that ends at Surveyor 3. They bring back about 10 kg of its parts, including its TV camera." },
+      { date: "November 20, 1969", text: "The ascent stage lifts off at 14:25 UTC after 31 hours 31 minutes on the Moon." },
+      { date: "November 20, 1969", text: "After the crew moves back into the command module, the empty ascent stage is cast off at 20:21 UTC and crashed on purpose about 60 km from the seismometer: the first recorded artificial moonquake." },
+      { date: "September 30, 1977", text: "The science station is switched off, along with all the other Apollo stations." }
+    ],
+    contributions: [
+      "Two moonwalks totalling 7 hours 45 minutes and 1.35 km on foot.",
+      "34.35 kg of rock and soil samples returned to Earth, plus about 10 kg of Surveyor 3.",
+      "A science station (ALSEP) with six instruments: a seismometer, an ion detector, an ion gauge for the thin lunar atmosphere, a dust detector, a magnetometer and a solar wind spectrometer. It ran on a plutonium-238 generator.",
+      "The ascent stage was crashed on purpose about 60 km from the seismometer, creating the first recorded artificial moonquake."
+    ],
+    status: {
+      text: "Intrepid's descent stage and the science station (switched off on September 30, 1977) are still in the Ocean of Storms, with Surveyor 3 about 180 m away. The ascent stage lies about 60 km away, where it was crashed.",
+      asOf: "NASA NSSDCA catalog, read November 14, 2026.",
+      sourceLabel: "NASA NSSDCA: Apollo 12 Lunar Module / ALSEP (1969-099C)",
+      sourceUrl: "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-099C"
+    },
+    markerNote: "The marker shows the lunar module landing site. Surveyor 3 is about 180 m away, so the two markers almost overlap.",
+    coordinateNote: "Coordinates from NASA's NSSDCA catalog, measured from Lunar Reconnaissance Orbiter images (3.0128 S, 23.4219 W). The marker position on the globe is approximate.",
+    sources: [
+      { label: "NASA NSSDCA: Apollo 12 Lunar Module / ALSEP (1969-099C)", url: "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-099C" },
+      { label: "NASA NSSDCA: Surveyor 3 (1967-035A)", url: "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1967-035A" },
+      { label: "NASA Image Library: AS12-48-7136, Conrad examines Surveyor 3", url: "https://images.nasa.gov/details/as12-48-7136" }
+    ],
+    landing: {
+      style: "retro", lander: "lunar-module", scale: 2.6, crew: true,
+      captions: {
+        braking: "With no air on the Moon, Intrepid slows down by firing its descent engine against its direction of travel.",
+        touchdown: "Intrepid touches down in the Ocean of Storms at 06:54 UTC on November 19, 1969, within about 180 m of Surveyor 3.",
+        surface: "Behind Intrepid, about 180 m away, stands Surveyor 3. Conrad and Bean will walk over to it on their second moonwalk."
+      },
+      // already on the ground: Surveyor 3, about 180 m away (NSSDCA); the direction in the scene is illustrative
+      neighbors: [{ model: "surveyor", scale: 1.05, distance: 180, label: "Surveyor 3 \u00B7 landed April 1967 \u00B7 about 180 m away" }]
     }
   },
 
@@ -485,16 +603,19 @@ export const hardwareList = [
       { date: "June 19, 1976", text: "Enters orbit around Mars." },
       { date: "July 20, 1976", text: "The lander touches down at 11:53 UTC in Chryse Planitia, about 28 km from its planned target, and takes the first photo from the surface of Mars." },
       { date: "July 28, 1976", text: "The robot arm collects the first soil samples for the biology experiments." },
+      { date: "August 7, 1980", text: "The orbiter is shut down on its 1,489th orbit, after running out of attitude-control propellant." },
+      { date: "January 1982", text: "The lander is renamed the Thomas Mutch Memorial Station, after the leader of the Viking imaging team." },
       { date: "November 11, 1982", text: "Contact is lost after a faulty command from Earth. Later attempts to reach it fail." }
     ],
     contributions: [
       "The first photograph from the surface of Mars, and a 300-degree panorama.",
       "Biology experiments whose combined results NASA describes as possibly a weak positive for life, while the test for organic compounds found none.",
-      "Years of weather reports: from about -86 °C before dawn to about -33 °C in the afternoon."
+      "Years of weather reports: from about -86 °C before dawn to about -33 °C in the afternoon.",
+      "Together, the two Viking orbiters returned 52,663 images and mapped about 97% of Mars at 300 m resolution; the two landers returned 4,500 photos of their sites."
     ],
     status: {
       text: "Not operating since November 1982. The lander is still in Chryse Planitia.",
-      asOf: "NASA, checked October 2026.",
+      asOf: "NASA Science page, checked November 14, 2026.",
       sourceLabel: "NASA Science: Viking 1",
       sourceUrl: "https://science.nasa.gov/mission/viking-1/"
     },
@@ -533,18 +654,20 @@ export const hardwareList = [
       "Mars Pathfinder tested a low-cost way to land on Mars and delivered a small rover to study rocks and soil.",
     history: [
       { date: "December 4, 1996", text: "Launches on a Delta II rocket from Cape Canaveral." },
-      { date: "July 4, 1997", text: "Lands in Ares Vallis, bouncing on airbags more than 15 times before stopping." },
+      { date: "July 4, 1997", text: "Lands in Ares Vallis at about 14 m/s inside its airbags, bouncing about 15 times (as high as 15 m) and coming to rest about 1 km from where it first hit." },
       { date: "July 5, 1997", text: "Sojourner rolls onto the surface (on the mission's second sol)." },
       { date: "September 27, 1997", text: "Final data transmission from the lander." }
     ],
     contributions: [
       "More than 16,500 pictures from the lander and 550 from the rover.",
       "More than 15 chemical analyses of rocks and soil.",
-      "Rounded pebbles and the flood channel suggest that Mars was once warmer and wetter, with running water."
+      "Rounded pebbles and the flood channel suggest that Mars was once warmer and wetter, with running water.",
+      "2.3 billion bits of information in under three months.",
+      "Radio tracking of the lander measured Mars's pole of rotation and suggested a metal core between about 1,300 and 2,000 km in radius."
     ],
     status: {
       text: "Silent since September 27, 1997. The lander and Sojourner are still in Ares Vallis.",
-      asOf: "NASA, checked October 2026.",
+      asOf: "NASA Science page, checked November 14, 2026.",
       sourceLabel: "NASA Science: Mars Pathfinder",
       sourceUrl: "https://science.nasa.gov/mission/mars-pathfinder/"
     },
@@ -604,6 +727,7 @@ export const hardwareList = [
     coordinateNote: "Coordinates from NASA's Mars24 lander list (14.57 S, 175.48 E). The marker position on the globe is approximate.",
     sources: [
       { label: "NASA Science: Spirit", url: "https://science.nasa.gov/mission/mer-spirit/" },
+      { label: "NASA Science: Mars Exploration Rovers Spirit and Opportunity", url: "https://science.nasa.gov/mission/mars-exploration-rovers-spirit-and-opportunity/" },
       { label: "NASA/JPL: Mars Rovers Head for Exciting Landings in January", url: "https://www.jpl.nasa.gov/news/mars-rovers-head-for-exciting-landings-in-january/" },
       { label: "NASA GISS Mars24: Mars lander locations", url: "https://www.giss.nasa.gov/tools/mars24/help/landers.html" }
     ],
@@ -640,7 +764,7 @@ export const hardwareList = [
       { date: "June 10, 2018", text: "Last contact, as a Mars-wide dust storm covers the rover. NASA ends the mission on February 13, 2019." }
     ],
     contributions: [
-      "Drove 45.16 km in total.",
+      "Drove 45.16 km in total: the off-Earth driving record until NASA's Perseverance rover passed it on October 11, 2026.",
       "Found evidence of past water, including a gully that scientists were confident water helped carve.",
       "Found an iron-nickel meteorite, nicknamed \"Heat Shield Rock\", in January 2005."
     ],
@@ -654,6 +778,7 @@ export const hardwareList = [
     coordinateNote: "Coordinates from NASA's Mars24 lander list (1.95 S, 354.47 E). The marker position on the globe is approximate.",
     sources: [
       { label: "NASA Science: Opportunity", url: "https://science.nasa.gov/mission/mer-opportunity/" },
+      { label: "NASA Science: Mars Exploration Rovers Spirit and Opportunity", url: "https://science.nasa.gov/mission/mars-exploration-rovers-spirit-and-opportunity/" },
       { label: "NASA Science: How We Land on Mars", url: "https://science.nasa.gov/planetary-science/programs/mars-exploration/mission-timeline/how-we-land-on-mars/" },
       { label: "NASA GISS Mars24: Mars lander locations", url: "https://www.giss.nasa.gov/tools/mars24/help/landers.html" }
     ],
@@ -742,7 +867,8 @@ export const hardwareList = [
     contributions: [
       "Detected 1,319 marsquakes, including some caused by meteoroid impacts.",
       "Revealed details of the layers inside Mars: its crust, mantle and core.",
-      "Found strong traces of Mars's ancient magnetic field, and impacts that dug up boulder-size chunks of ice."
+      "Found strong traces of Mars's ancient magnetic field, and impacts that dug up boulder-size chunks of ice.",
+      "Its sensors recorded the low rumble of Martian wind, estimated at 5 to 7 m/s, on December 1, 2018."
     ],
     status: {
       text: "Mission ended December 2022. The lander remains in Elysium Planitia.",
@@ -751,9 +877,10 @@ export const hardwareList = [
       sourceUrl: "https://www.nasa.gov/missions/insight/nasa-retires-insight-mars-lander-mission-after-years-of-science/"
     },
     markerNote: "The marker shows the landing site.",
-    coordinateNote: "Coordinates from NASA's Mars24 lander list (4.50 N, 135.62 E). The marker position on the globe is approximate.",
+    coordinateNote: "Coordinates from NASA's Mars24 lander list (4.50 N, 135.62 E). NASA's InSight page describes the landing area as centered at about 4.5 N, 135.9 E, about 600 km from Curiosity's landing site. The marker position on the globe is approximate.",
     sources: [
       { label: "NASA: NASA Retires InSight Mars Lander Mission After Years of Science", url: "https://www.nasa.gov/missions/insight/nasa-retires-insight-mars-lander-mission-after-years-of-science/" },
+      { label: "NASA Science: InSight Lander", url: "https://science.nasa.gov/mission/insight/" },
       { label: "NASA Science: How We Land on Mars", url: "https://science.nasa.gov/planetary-science/programs/mars-exploration/mission-timeline/how-we-land-on-mars/" },
       { label: "NASA GISS Mars24: Mars lander locations", url: "https://www.giss.nasa.gov/tools/mars24/help/landers.html" }
     ],

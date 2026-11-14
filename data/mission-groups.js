@@ -17,7 +17,9 @@ export const DESTINATIONS = [
 export const MISSION_GROUPS = [
   { id: "gemini3", name: "Gemini III", year: 1965, where: "earth", items: ["gemini3"] },
   { id: "surveyor1", name: "Surveyor 1", year: 1966, where: "moon", items: ["surveyor1"] },
+  { id: "surveyor3", name: "Surveyor 3", year: 1967, where: "moon", items: ["surveyor3"] },
   { id: "apollo11", name: "Apollo 11", year: 1969, where: "moon", items: ["apollo11-csm", "apollo11-lm", "apollo11-cm", "lrrr", "pse"] },
+  { id: "apollo12", name: "Apollo 12", year: 1969, where: "moon", items: ["apollo12-lm"] },
   { id: "apollo15", name: "Apollo 15", year: 1971, where: "moon", items: ["lrv"] },
   { id: "pioneer10", name: "Pioneer 10", year: 1972, where: "outer", items: ["pioneer10"] },
   { id: "pioneer11", name: "Pioneer 11", year: 1973, where: "outer", items: ["pioneer11"] },

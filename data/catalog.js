@@ -149,7 +149,7 @@ export const catalog = [
   {
     id: "atlas-centaur", name: "Atlas-Centaur", category: "rockets", mission: "Surveyor, Pioneer, Pioneer Venus",
     launchDate: "May 30, 1966 (Surveyor 1)", destination: "Moon, Jupiter, Saturn, Venus", region: "Launch site (Earth)", bodies: ["Earth"],
-    status: { label: "Retired", text: "Launched Surveyor 1, Pioneer 10 (AC-27), Pioneer 11 (AC-30) and both Pioneer Venus spacecraft." },
+    status: { label: "Retired", text: "Launched Surveyor 1, Surveyor 3, Pioneer 10 (AC-27), Pioneer 11 (AC-30) and both Pioneer Venus spacecraft." },
     description: "A thin stainless-steel Atlas booster with a Centaur upper stage, one of the first rockets to use liquid hydrogen.",
     background: "Pioneer 10 launched on Atlas-Centaur AC-27 on March 2, 1972, and Pioneer 11 on AC-30 from Launch Complex 36B in April 1973.",
     purpose: "To send robotic explorers to the Moon and the planets.",
@@ -369,12 +369,16 @@ export const catalog = [
     description: "The first spacecraft to cross the asteroid belt and the first to fly past Jupiter.",
     background: "Pioneer 10 launched on Atlas-Centaur AC-27. It carries a plaque with a message about its makers.",
     purpose: "To explore the asteroid belt and Jupiter's environment.",
-    specs: [["Launch", "March 2, 1972, 01:49:04 UT"], ["Jupiter closest approach", "130,354 km"], ["Message", "Pioneer plaque"]],
+    specs: [["Launch", "March 2, 1972, 01:49:04 UT"], ["Jupiter closest approach", "130,354 km"], ["Message", "Pioneer plaque"], ["Last signal's travel time", "11 h 20 min (from 12.23 billion km)"]],
     timeline: [
       { date: "March 2, 1972", text: "Launch on Atlas-Centaur AC-27." },
       { date: "July 15, 1972", text: "Enters the asteroid belt, the first spacecraft to do so." },
       { date: "December 4, 1973", text: "First flyby of Jupiter." },
-      { date: "January 23, 2003", text: "Last signal received." }
+      { date: "February 1976", text: "Crosses the orbit of Saturn." },
+      { date: "June 13, 1983", text: "Crosses the orbit of Neptune, then the outermost planet: the first human-made object beyond it." },
+      { date: "March 31, 1997", text: "Routine contact ends, for budget reasons, 67 AU from Earth." },
+      { date: "February 17, 1998", text: "Voyager 1 passes it as the farthest human-made object." },
+      { date: "January 23, 2003", text: "Last signal received. Its radioisotope power had decayed too far to run the radio." }
     ],
     related: ["pioneer11", "voyager1", "atlas-centaur"],
     sources: [PIONEER10],
@@ -622,8 +626,23 @@ export const catalog = [
   {
     id: "surveyor1", name: "Surveyor 1", category: "landers", mission: "Surveyor 1", hardware: "surveyor1",
     launchDate: "May 30, 1966", rocket: "atlas-centaur", destination: "Moon", region: "Moon", bodies: ["Moon"],
-    status: { label: "On the surface" }, related: ["atlas-centaur"],
+    status: { label: "On the surface" }, related: ["surveyor3", "atlas-centaur"],
     model: { type: "model", key: "surveyor" }, landing: "surveyor1"
+  },
+  // Surveyor 3 and Apollo 12 (NASA resources, 2026-11-15): profiles in data/hardware.js
+  {
+    id: "surveyor3", name: "Surveyor 3", category: "landers", mission: "Surveyor 3", hardware: "surveyor3",
+    launchDate: "April 17, 1967", rocket: "atlas-centaur", destination: "Moon, Ocean of Storms", region: "Moon", bodies: ["Moon"],
+    status: { label: "On the surface" }, related: ["apollo12-lm", "surveyor1", "atlas-centaur"],
+    model: { type: "model", key: "surveyor" }, landing: "surveyor3",
+    image: { label: "NASA Image Library: AS12-48-7136, Conrad examines Surveyor 3 (Apollo 12)", url: "https://images.nasa.gov/details/as12-48-7136" }
+  },
+  {
+    id: "apollo12-lm", name: "Apollo 12 Lunar Module Intrepid", category: "landers", mission: "Apollo 12", hardware: "apollo12",
+    launchDate: "November 14, 1969", rocket: "saturn-v", destination: "Moon, Ocean of Storms", region: "Moon", bodies: ["Moon"],
+    status: { label: "On the surface" }, related: ["surveyor3", "apollo11-lm", "saturn-v"],
+    model: { type: "model", key: "lunar-module" }, landing: "apollo12",
+    image: { label: "NASA Image Library: AS12-48-7136, Conrad examines Surveyor 3 with Intrepid behind", url: "https://images.nasa.gov/details/as12-48-7136" }
   },
   {
     id: "blueghost1", name: "Blue Ghost Mission 1", category: "landers", mission: "Blue Ghost Mission 1 (Firefly, NASA CLPS)", hardware: "blueghost1",
@@ -687,6 +706,15 @@ export const catalog = [
     launchDate: "July 30, 2020", rocket: "atlas-v-541", destination: "Mars, Jezero Crater", region: "Mars", bodies: ["Mars"],
     status: { label: "Ended", text: "NASA ended the helicopter's mission on January 25, 2024." },
     description: "A small helicopter carried under Perseverance. It made the first powered flight on Mars on April 19, 2021, and its 72nd and final flight on January 18, 2024.",
+    purpose: "A technology demonstration planned for up to five test flights in 30 days. It went on to scout ahead for Perseverance's scientists and drivers, and to test its own limits.",
+    specs: [["Flights", "72"], ["Time in the air", "128.8 minutes"], ["Distance flown", "17.0 km"], ["Highest altitude", "24.0 m"], ["Mass", "1.8 kg"], ["Rotor span", "About 1.2 m"]],
+    timeline: [
+      { date: "February 18, 2021", text: "Lands in Jezero Crater, attached under the Perseverance rover." },
+      { date: "April 19, 2021", text: "The first powered, controlled flight on another planet." },
+      { date: "January 18, 2024", text: "Flies for the last time." },
+      { date: "January 25, 2024", text: "NASA ends the mission after nearly three years and 72 flights." }
+    ],
+    sources: [{ label: "NASA Science: Ingenuity Mars Helicopter", url: "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity-mars-helicopter/" }],
     related: ["perseverance"],
     model: { type: "model", key: "helicopter-flying" }
   },

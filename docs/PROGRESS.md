@@ -321,6 +321,80 @@ The first countdown caption describes each pad, and rockets that were stacked on
 - Venus texture 404 fixed.
 - `docs/ASSETS.md` lists the Venus files by their real names.
 
+## Completed (2026-11-15): NASA resources, recommendation 4 (Apollo 12 and Surveyor 3)
+- **Two new Moon sites, about 180 m apart:** Surveyor 3 (landed April 20, 1967 UTC) and the Apollo 12 Lunar Module Intrepid (landed November 19, 1969). This is the only time astronauts visited a spacecraft that had landed before them.
+- **Data:**
+  - `data/hardware.js`: a full profile for each (summary, purpose, timeline, contributions, status, coordinates, sources, landing scene). Apollo 12 is at 3.0128 S, 23.4219 W; Surveyor 3 at 3.0162 S, 336.582 E. Both sets are NSSDCA figures measured from Lunar Reconnaissance Orbiter images.
+  - `data/catalog.js`: Missions items `apollo12-lm` and `surveyor3`, each linking the other. Atlas-Centaur's launch list now includes Surveyor 3.
+  - `data/mission-groups.js`: new "Surveyor 3" (1967) and "Apollo 12" (1969) groups.
+  - `data/mission-photos.js`: NASA photo AS12-48-7136 (Conrad at Surveyor 3, Intrepid behind; by Alan Bean) on both replays' end cards. It loads from NASA's Image Library, so nothing is stored in the project.
+- **Facts** come from the NSSDCA records 1969-099C and 1967-035A (read November 14, 2026), NASA Science's Surveyor 3 page, and NASA's caption for AS12-48-7136. They include:
+  - Surveyor 3's three touchdowns, 6,326 pictures and soil strength (about 0.7 kg/cm², enough for a lunar module).
+  - The roughly 10 kg of parts Apollo 12 brought back; the camera is now at the Smithsonian.
+  - Apollo 12's two moonwalks, 34.35 kg of samples, six-instrument ALSEP, and the deliberately crashed ascent stage (the first recorded artificial moonquake).
+- **Left out on purpose:** Surveyor 3's mass. NSSDCA gives 296 kg and NASA Science 997.9 kg, probably landed versus launch mass; not stated without checking.
+- **Tested in the browser:**
+  - Missions: the Moon filter shows the two new mission blocks; both detail pages show their facts, photo link, related items and Replay.
+  - The Moon globe lists both sites, and "View site on the Moon globe" selects the right one.
+  - Apollo 12 replay: the landing caption and site card are right, and the end card loads the NASA photo (1280 px).
+  - Surveyor 3 replay: the landing chapter runs with the three-touchdown caption.
+  - No console errors.
+- **Not done:**
+  - The landing scene doesn't act out Surveyor 3's bounces (the caption tells it).
+  - At globe scale the two markers almost overlap; the sidebar list separates them.
+- **Follow-up: Surveyor 3 in the Apollo 12 landing scene.**
+  - New `landing.neighbors` option in `data/hardware.js`, handled by `addNeighbors()` in `js/landing-scene.js`. Hardware already on the ground nearby stands at its real distance (Surveyor 3: 180 m), retro-rocket already gone.
+  - It has a small label that stays readable at any distance: "Surveyor 3 · landed April 1967 · about 180 m away".
+  - The direction in the scene is chosen, not geographic. The code tries directions 10 to 35 degrees to either side of straight behind the lander, and uses the first one with a clear line of sight over the generated hills.
+  - For scenes with a neighbour, the camera after touchdown sits a little higher (7.5 m) so the horizon stays in view.
+  - The touchdown caption now points it out.
+  - Tested: Surveyor 3 shows during the descent and after touchdown. A temporary 10x-size test confirmed it stands on the ground, unblocked, under its label; it was reverted. Surveyor 1's landing is unchanged. No console errors.
+
+## Completed (2026-11-15): NASA resources, recommendation 3 (rover distance chart)
+- **"How far it drove"** is a new section on every rover page in Missions: Lunar Roving Vehicle (Apollo 15), Mars Pathfinder & Sojourner, Spirit, Opportunity, Curiosity and Perseverance.
+- **What it shows:** all 12 rovers that have driven on the Moon and Mars, drawn to one scale.
+  - The rover you're viewing is highlighted, with a sentence giving its rank ("tied for" when distances match).
+  - A dotted marathon mark at 42.195 km.
+  - Moon / Mars / All filters, and striped bars for rovers still driving.
+  - Each other NASA rover's name opens its page.
+- **Data:** `data/rover-distances.js`, copied exactly from NASA/JPL's infographic "Out-of-this-world records" (as of Oct. 12, 2026, on NASA's Spirit and Opportunity page), with its source link.
+  - Soviet and Chinese rovers are included, as on NASA's chart; Yutu's distances are marked as estimates.
+  - The Apollo 15 row notes that NASA's catalog gives 27.9 km for all three moonwalks (the chart gives 27.8 km for the rover).
+- **Files:** `data/rover-distances.js` (new), `js/explorer.js` (`renderRoverRace`), `index.html` (one section), `css/style.css`.
+- **Tested in the browser:**
+  - Highlighting and rank sentences on the Apollo 15 rover, Spirit, Perseverance and Pathfinder pages.
+  - The Moon filter shows only Moon rovers; the Spirit link opens Spirit's page; the chart is hidden on non-rover pages (Voyager 1).
+  - The marathon mark sits at the right point on the scale; no sideways scrolling at 375 px; no console errors.
+- **Not done:** Perseverance's and Curiosity's distances will grow; update the data file from NASA's chart when a newer version is published.
+
+## Completed (2026-11-15): NASA resources, recommendation 1 (facts from NASA's records)
+Source: the team's NASA zip, analysed in the "Space Legacy NASA Resource Review" page. It contained the NSSDCA catalog pages in `Moon.pdf` and saved NASA Science mission pages. Only data files changed; every new fact links to its NASA source.
+- **Apollo 11** (`data/hardware.js`, NSSDCA 1969-059C, now in sources):
+  - Eagle's ascent stage was cast off on July 22, 1969; its fate is not known.
+  - The seismic package stopped on August 27, 1969.
+  - The early experiment package (EASEP) weighed 48 kg, about 17 m south of the lunar module.
+- **Apollo 15:**
+  - The ascent stage crashed on August 3, 1971 at 26.36° N, 0.25° E.
+  - The memorial plaque, and the hammer-and-feather drop.
+  - The SNAP-27 nuclear generator: plutonium-238, about 70 W, 63.5 W after a year.
+- **Viking 1:** the orbiter was shut down on its 1,489th orbit (August 7, 1980); the lander was renamed the Thomas Mutch Memorial Station; the orbiters returned 52,663 images and the landers 4,500.
+- **Mars Pathfinder:** the airbag landing (about 14 m/s, about 15 bounces up to 15 m, rest about 1 km away), 2.3 billion bits, and the core-size estimate from radio tracking.
+- **Opportunity:** its 45.16 km record stood until Perseverance passed it on October 11, 2026.
+- **Spirit and Opportunity:** the joint NASA mission page added to sources.
+- **InSight:** the Martian wind recording, NASA's landing-area figure in the coordinate note, and the NASA Science page.
+- **Ingenuity** (`data/catalog.js`):
+  - Its own purpose, specs (72 flights, 128.8 min, 17.0 km, 24.0 m, 1.8 kg), timeline and NASA source.
+  - Its page used to borrow Perseverance's timeline.
+- **Pioneer 10:**
+  - Crossing Saturn's orbit (1976) and Neptune's orbit (1983).
+  - Routine contact ending in 1997, at 67 AU.
+  - Voyager 1 passing it in 1998.
+  - Why the last signal ended (its radioisotope power had decayed).
+  - The last signal's 11 h 20 min travel time.
+- Existing facts that already matched NASA's records were left unchanged: the Apollo 11 and 15 coordinates and liftoff times, and the 1977 ALSEP shutdown.
+- Tested in the browser: opened the Missions detail pages for Apollo 11 LM, the Lunar Roving Vehicle, Ingenuity, Pioneer 10, Viking 1, Opportunity, Pathfinder and InSight; every new fact and source appears; no console errors.
+- Still to do from the review: correct NEAR "out of fuel" before NLC-2 returns (2), the rover distance chart (3), and the Apollo 12 + Surveyor 3 site (4).
+
 ## Completed (2026-11-14): Kampu Space Master Doc (15)
 - **Solar System view buttons (Labels, Orbits, Shadows, Pause, speed) moved down** into the space the Controls button left: 18 px from the bottom instead of 58 px. The speed menu still opens 10 px above them.
 - **Bug fix (phones): the Solar System list no longer flashes over the screen and the bottom bar.** As the opening flight ended, the list's "slide in" animation briefly moved the closed drawer on screen for about a second, covering all five bar buttons. On phones the closed drawer now skips that animation. Measured during the intro: it stays off-screen, and the bar buttons can be clicked.
